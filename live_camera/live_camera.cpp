@@ -42,8 +42,17 @@ void av_log_selfcallback(void* ptr, int level, const char* fmt, va_list vl)
 	vsnprintf(line, sizeof(line), fmt, vl);
 	string strLine(line);
 
-	string::size_type  pos = strLine.find_first_not_of('   ');
-	string strnew = strLine.substr(pos, strLine.size() - pos);
+	string::size_type  pos = strLine.find_first_not_of(' ');
+	string strtmp = strLine.substr(pos, strLine.size() - pos);
+
+	/* Delete space */
+	strtmp.erase(strtmp.find_last_not_of("\n\r\t") + 1);
+
+	/* Delete "" */
+	string::size_type  pos1 = strtmp.find_first_not_of('\"');
+	string strnew = strtmp.substr(pos1, strtmp.size() - pos);
+
+	strnew.erase(strnew.find_last_not_of("\"\"") + 1);
 
 	g_Device_array.push_back(strnew);
 }
@@ -54,7 +63,7 @@ void showAllVideoDeivces()
 	int i = 0;
 	vector<string>::iterator it;
 
-	/* Set avlog callback function to save results */
+	/* Set avlog callback function to save results of avformat_open_input */
 	av_log_set_callback(av_log_selfcallback);
 
 	/* Get all video devices */
@@ -70,42 +79,74 @@ void showAllVideoDeivces()
 	{
 		cout << "Device - " << i++ << ":"<< *it << endl;
 	}
+
+	/* Set avlog default callback function */
+	av_log_set_callback(av_log_default_callback);
 }
 
 
 
 int main()
-{		
+{	
+	/* Vars */
 	vector<string>::iterator it;
-	string AudioDeviceName;
+	char VideoDeviceName[1024] = {0};
+	char AudioDeviceName[1024] ={0};
+
+	int VideoDeviceIndex = 0;
+	int AudioDeviceIndex = 0;
+	int ret = 0;
+
+	AVFormatContext * ifmt_ctx_v = NULL;
+	AVFormatContext * ifmt_ctx_a = NULL;
+	AVInputFormat * ifmt = NULL;
 
 	/* Initialize ffmpeg components*/
 	av_register_all();
 	avdevice_register_all();
 	avformat_network_init();
+
+	av_log_set_level(AV_LOG_INFO);
 	
 	/* List all video and audio devices */
 	showAllVideoDeivces();
 
 	/* Select video device */
 	cout << "Please select video capture device:" << endl;
-	
+	cin >> VideoDeviceIndex;
+	cout << "Selected video device is " << g_Device_array[VideoDeviceIndex] << endl;
 
 	/* Find all valid audio capture devices */
-	for (it = g_Device_array.begin(); it < g_Device_array.end(); it++)
-	{
-		if (NULL != strstr(it->c_str(), "High Definition Audio"))
-		{
-			cout << "Find audio device: " << *it << endl;
-		}
-	}
-
+	cout << "Please select video capture device:" << endl;
+	cin >> AudioDeviceIndex;
+	cout << "Selected audio device is " << g_Device_array[AudioDeviceIndex] << endl;
 
 	/* Open video capture device */
+	AVDictionary * device_param = 0;
+	ifmt = av_find_input_format("dsshow");
 
+	//snprintf(VideoDeviceName, sizeof(VideoDeviceName), "video=%s", g_Device_array[VideoDeviceIndex].c_str());
+	snprintf(VideoDeviceName, sizeof(VideoDeviceName), "video=%s", "TOSHIBA Web Camera - HD");
+	ret = avformat_open_input(&ifmt_ctx_v, VideoDeviceName, ifmt, &device_param);
+	if (0 != ret)
+	{
+		av_log(&ifmt_ctx_v, AV_LOG_ERROR, "Video device %s can't open!\n", VideoDeviceName);
+	}
+	else
+	{
+		av_log(&ifmt_ctx_v, AV_LOG_INFO, "Video device %s open!\n", VideoDeviceName);
+	}
 
-	/* Open audio capture device */
-	
+	snprintf(AudioDeviceName, sizeof(VideoDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
+	ret = avformat_open_input(&ifmt_ctx_a, AudioDeviceName, ifmt, &device_param);
+	if (0 != ret)
+	{
+		av_log(&ifmt_ctx_v, AV_LOG_ERROR, "Audio device %s can't open!\n", AudioDeviceName);
+	}
+	else
+	{
+		av_log(&ifmt_ctx_v, AV_LOG_INFO, "Audio device %s open!\n", AudioDeviceName);
+	}
 
 	/* Initialize output */
 
