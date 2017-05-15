@@ -1,4 +1,4 @@
-﻿// live_camera.cpp : 定义控制台应用程序的入口点。
+// live_camera.cpp : 定义控制台应用程序的入口点。
 //
 
 #include "stdafx.h"
@@ -37,7 +37,7 @@ extern "C"
 vector<string> g_Device_array;
 
 void av_log_selfcallback(void* ptr, int level, const char* fmt, va_list vl)
-{	
+{
 	char line[LINE_SIZE];
 	vsnprintf(line, sizeof(line), fmt, vl);
 	string strLine(line);
@@ -77,7 +77,7 @@ void showAllVideoDeivces()
 	/* Print all devices */
 	for (it = g_Device_array.begin(); it < g_Device_array.end(); it++)
 	{
-		cout << "Device - " << i++ << ":"<< *it << endl;
+		cout << "Device - " << i++ << ":" << *it << endl;
 	}
 
 	/* Set avlog default callback function */
@@ -87,11 +87,11 @@ void showAllVideoDeivces()
 
 
 int main()
-{	
+{
 	/* Vars */
 	vector<string>::iterator it;
-	char VideoDeviceName[1024] = {0};
-	char AudioDeviceName[1024] ={0};
+	char VideoDeviceName[1024] = { 0 };
+	char AudioDeviceName[1024] = { 0 };
 
 	int VideoDeviceIndex = 0;
 	int AudioDeviceIndex = 0;
@@ -107,7 +107,7 @@ int main()
 	avformat_network_init();
 
 	av_log_set_level(AV_LOG_INFO);
-	
+
 	/* List all video and audio devices */
 	showAllVideoDeivces();
 
@@ -123,38 +123,38 @@ int main()
 
 	/* Open video capture device */
 	AVDictionary * device_param = 0;
-	ifmt = av_find_input_format("dsshow");
+	ifmt = av_find_input_format("dshow");
 
-	//snprintf(VideoDeviceName, sizeof(VideoDeviceName), "video=%s", g_Device_array[VideoDeviceIndex].c_str());
-	snprintf(VideoDeviceName, sizeof(VideoDeviceName), "video=%s", "TOSHIBA Web Camera - HD");
+	snprintf(VideoDeviceName, sizeof(VideoDeviceName), "video=%s", g_Device_array[VideoDeviceIndex].c_str());
+	printf("video is %s\n", VideoDeviceName);
 	ret = avformat_open_input(&ifmt_ctx_v, VideoDeviceName, ifmt, &device_param);
 	if (0 != ret)
 	{
-		av_log(&ifmt_ctx_v, AV_LOG_ERROR, "Video device %s can't open!\n", VideoDeviceName);
+		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Video device %s can't open!\n", VideoDeviceName);
 	}
 	else
 	{
-		av_log(&ifmt_ctx_v, AV_LOG_INFO, "Video device %s open!\n", VideoDeviceName);
+		av_log(ifmt_ctx_v, AV_LOG_INFO, "Video device %s open successfully!\n", VideoDeviceName);
 	}
 
-	snprintf(AudioDeviceName, sizeof(VideoDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
+	snprintf(AudioDeviceName, sizeof(AudioDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
+	printf("audio is %s\n", AudioDeviceName);
 	ret = avformat_open_input(&ifmt_ctx_a, AudioDeviceName, ifmt, &device_param);
 	if (0 != ret)
 	{
-		av_log(&ifmt_ctx_v, AV_LOG_ERROR, "Audio device %s can't open!\n", AudioDeviceName);
+		av_log(ifmt_ctx_a, AV_LOG_ERROR, "Audio device %s can't open!\n", AudioDeviceName);
 	}
 	else
 	{
-		av_log(&ifmt_ctx_v, AV_LOG_INFO, "Audio device %s open!\n", AudioDeviceName);
+		av_log(ifmt_ctx_a, AV_LOG_INFO, "Audio device %s open successfully!\n", AudioDeviceName);
 	}
 
 	/* Initialize output */
 
 	/* Encode video and audio and push it by net */
-	
+
 
 	system("pause");
 
-    return 0;
+	return 0;
 }
-
