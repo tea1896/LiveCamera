@@ -1,0 +1,9 @@
+    Alternative name "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\wave_{22F7D981-5520-4FBE-BE54-8EA56E7EF03C}"
+DirectShow video devices (some may be both video and audio devices)
+ "Integrated Webcam"
+    Alternative name "@device_pnp_\\?\usb#vid_0c45&pid_6480&mi_00#7&755ca5&0&0000#{65e8773d-8f56-11d0-a3b9-00a0c9223196}\global"
+DirectShow audio devices
+ "麦克风 (Realtek High Definition Audio)"
+    Alternative name "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\wave_{22F7D981-5520-4FBE-BE54-8EA56E7EF03C}"
+DirectShow video devices (some may be both video and audio devices)
+DirectShow video devices (some may be both video and audio devices)
