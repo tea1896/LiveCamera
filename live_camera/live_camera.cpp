@@ -32,6 +32,9 @@ extern "C"
 #define TMP_FILE "tmp.txt"
 #define LINE_SIZE 1024
 
+#define LC_SUCCESS 0
+#define LC_FAIL	   -1
+
 vector<string> g_Device_array;
 
 void av_log_selfcallback(void* ptr, int level, const char* fmt, va_list vl)
@@ -91,13 +94,26 @@ int main()
 	char VideoDeviceName[1024] = { 0 };
 	char AudioDeviceName[1024] = { 0 };
 
+	int video_stream_index = 0;
+	int audio_stream_index = 0;
 	int VideoDeviceIndex = 0;
 	int AudioDeviceIndex = 0;
 	int ret = 0;
+	int i = 0;
+	const char * output_format = "mpegts";
+	const char * output_path = "udp://227.10.20.80:1234?pkt_size=1316";
 
 	AVFormatContext * ifmt_ctx_v = NULL;
 	AVFormatContext * ifmt_ctx_a = NULL;
+	AVFormatContext * ofmt_ctx = NULL;
 	AVInputFormat * ifmt = NULL;
+	AVCodec * pCodec_v = NULL;
+	AVCodecContext * pCodecCtx_v = NULL;
+	AVCodec * pCodec_a = NULL;
+	AVCodecContext * pCodecCtx_a = NULL;
+	AVDictionary *param =  NULL;
+	AVStream * video_stream = NULL;
+	AVStream * audio_stream = NULL;
 
 	/* Initialize ffmpeg components*/
 	av_register_all();
@@ -106,20 +122,20 @@ int main()
 
 	av_log_set_level(AV_LOG_INFO);
 
-	/* List all video and audio devices */
+	/* 1. List all video and audio devices */
 	showAllVideoDeivces();
 
-	/* Select video device */
+	/* 2. Select video device */
 	cout << "Please select video capture device:" << endl;
 	cin >> VideoDeviceIndex;
 	cout << "Selected video device is " << g_Device_array[VideoDeviceIndex] << endl;
 
-	/* Find all valid audio capture devices */
+	/* 3. Select audio device */
 	cout << "Please select video capture device:" << endl;
 	cin >> AudioDeviceIndex;
 	cout << "Selected audio device is " << g_Device_array[AudioDeviceIndex] << endl;
 
-	/* Open video capture device */
+	/* 4. Open video capture device */
 	AVDictionary * device_param = 0;
 	ifmt = av_find_input_format("dshow");
 
@@ -129,32 +145,150 @@ int main()
 	if (0 != ret)
 	{
 		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Video device %s can't open!\n", VideoDeviceName);
+		return LC_FAIL;
 	}
 	else
 	{
 		av_log(ifmt_ctx_v, AV_LOG_INFO, "Video device %s open successfully!\n", VideoDeviceName);
 	}
 
-	/* Open audio capture device */
+	ret = avformat_find_stream_info(ifmt_ctx_v, NULL);
+	if( ret < 0 )
+	{
+		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Video get stream info failed!\n");
+		return LC_FAIL;
+	}
+	video_stream_index = -1;
+	for( i=0; i<ifmt_ctx_v->nb_streams; i++ )
+	{
+		if( ifmt_ctx_v->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+		{
+			video_stream_index = i;
+		}
+	}
+	if( -1 == video_stream_index )
+	{
+		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a video stream!\n");
+		return LC_FAIL;
+	}
+
+	/* 5. Open video capture device */
 	snprintf(AudioDeviceName, sizeof(AudioDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
 	printf("audio is %s\n", AudioDeviceName);
 	ret = avformat_open_input(&ifmt_ctx_a, AudioDeviceName, ifmt, &device_param);
-	if (0 != ret)
+	if( ret < 0 )
 	{
 		av_log(ifmt_ctx_a, AV_LOG_ERROR, "Audio device %s can't open!\n", AudioDeviceName);
-		return -2;
+		return LC_FAIL;
 	}
 	else
 	{
 		av_log(ifmt_ctx_a, AV_LOG_INFO, "Audio device %s open successfully!\n", AudioDeviceName);
 	}
+	audio_stream_index = -1;
+	for( i=0; i<ifmt_ctx_a->nb_streams; i++ )
+	{
+		if(AVMEDIA_TYPE_AUDIO == ifmt_ctx_a->streams[i]->codec->codec_type)
+		{
+			audio_stream_index = i;
+		}
+	}
+	if( -1 == audio_stream_index )
+	{
+		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a audio stream!\n");
+		return LC_FAIL;
+	}
 
-	/* Initialize output */
+	/* 6. Initialize output */
+	ret = avformat_alloc_output_context2(&ofmt_ctx, NULL, output_format, output_path);
+	if( ret < 0 )
+	{
+		av_log(ifmt_ctx_a, AV_LOG_ERROR, "Initialize output failed!\n");
+		return LC_FAIL;
+	}
 
-	/* Encode video and audio and push it by net */
+	/* 7. Open video encoder and initialize it */
+	pCodec_v = avcodec_find_encoder(AV_CODEC_ID_H264);
+	if(NULL == pCodec_v)
+	{
+		av_log(ofmt_ctx, AV_LOG_ERROR, "Can't find video encoder!\n");
+		return LC_FAIL;
+	}
+	pCodecCtx_v = avcodec_alloc_context3(pCodec_v);
+	pCodecCtx_v->pix_fmt = AV_PIX_FMT_YUV420P;
+    pCodecCtx_v->width = ifmt_ctx_v->streams[video_stream_index]->codec->width;
+    pCodecCtx_v->height = ifmt_ctx_v->streams[video_stream_index]->codec->height;
+    pCodecCtx_v->time_base.num = 1;
+    pCodecCtx_v->time_base.den = 25;
+    pCodecCtx_v->bit_rate = 1000000;
+    pCodecCtx_v->gop_size = 50;
+
+	/* Some formats want stream headers to be separate. */
+    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+   	{
+        pCodecCtx_v->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    }
+
+	/* Open video encoder */
+    if (avcodec_open2(pCodecCtx_v, pCodec_v, &param) < 0)
+	{
+        av_log(ofmt_ctx, AV_LOG_ERROR, "Open video encoder failed\n");
+        return LC_FAIL;
+    }
+
+	/* Add a new stream to output,should be called by the user before avformat_write_header() for muxing */
+    video_stream = avformat_new_stream(ofmt_ctx, pCodec_v);
+    if (video_stream == NULL)
+	{
+		av_log(ofmt_ctx, AV_LOG_ERROR, "Create video stream failed\n");
+        return LC_FAIL;
+    }
+    video_stream->time_base.num = pCodecCtx_v->time_base.num;
+    video_stream->time_base.den = pCodecCtx_v->time_base.den;
+    video_stream->codec = pCodecCtx_v;
+	
+	
+	/* 8. Open audio encoder and initialize it */
+	pCodec_a = avcodec_find_encoder(AV_CODEC_ID_AAC);
+    if (!pCodec_a)
+	{
+        av_log(ofmt_ctx, AV_LOG_ERROR, "Can't find audio encoder!\n");
+        return LC_FAIL;
+    }
+    pCodecCtx_a = avcodec_alloc_context3(pCodec_a);
+    pCodecCtx_a->channels = 2;
+    pCodecCtx_a->channel_layout = av_get_default_channel_layout(2);
+	pCodecCtx_a->sample_rate = ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate;
+    pCodecCtx_a->sample_fmt = pCodec_a->sample_fmts[0];
+    pCodecCtx_a->bit_rate = 32000;
+    pCodecCtx_a->time_base.num = 1;
+	pCodecCtx_a->time_base.den = pCodecCtx_a->sample_rate;
+    /** Allow the use of the experimental AAC encoder */
+    pCodecCtx_a->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL; 
+    /* Some formats want stream headers to be separate. */
+    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+    {
+        pCodecCtx_a->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    }
+	if (avcodec_open2(pCodecCtx_a, pCodec_a, NULL) < 0)
+	{
+        av_log(ofmt_ctx, AV_LOG_ERROR, "Open audio encoder failed!\n");
+        return LC_FAIL;
+    }
+
+    //Add a new stream to output,should be called by the user before avformat_write_header() for muxing
+    audio_stream = avformat_new_stream(ofmt_ctx, pCodec_a);
+    if (audio_stream == NULL)
+	{
+		av_log(ofmt_ctx, AV_LOG_ERROR, "Create audio stream failed!\n");
+        return LC_FAIL;
+    }
+    audio_stream->time_base.num = 1;
+	audio_stream->time_base.den = pCodecCtx_a->sample_rate;
+    audio_stream->codec = pCodecCtx_a;
 
 
 	system("pause");
 
-	return 0;
+	return LC_SUCCESS;
 }
