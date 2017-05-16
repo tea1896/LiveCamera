@@ -1,11 +1,9 @@
 // live_camera.cpp : 定义控制台应用程序的入口点。
-//
+// Author: tea1896@gmail.com
 
 #include "stdafx.h"
 
 using namespace std;
-
-
 
 #include <vector>
 #include <iostream>
@@ -137,12 +135,14 @@ int main()
 		av_log(ifmt_ctx_v, AV_LOG_INFO, "Video device %s open successfully!\n", VideoDeviceName);
 	}
 
+	/* Open audio capture device */
 	snprintf(AudioDeviceName, sizeof(AudioDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
 	printf("audio is %s\n", AudioDeviceName);
 	ret = avformat_open_input(&ifmt_ctx_a, AudioDeviceName, ifmt, &device_param);
 	if (0 != ret)
 	{
 		av_log(ifmt_ctx_a, AV_LOG_ERROR, "Audio device %s can't open!\n", AudioDeviceName);
+		return -2;
 	}
 	else
 	{
