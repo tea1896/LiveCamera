@@ -115,13 +115,20 @@ int main()
 	AVStream * video_stream = NULL;
 	AVStream * audio_stream = NULL;
 	AVPacket  * dec_pkt_v = NULL;
-	AVPacket * enc_pkt_v = NULL;
+	AVPacket  enc_pkt_v;
 	AVPacket  * dec_pkt_a = NULL;
-	AVPacket * enc_pkt_a = NULL;
+	AVPacket  enc_pkt_a;
 	AVFrame * pFrame = NULL;
 	AVFrame * pFrameYUV = NULL;
 	struct SwsContext  * img_convert_ctx = NULL;
 	struct SwrContext * aud_convert_ctx = NULL;
+	int aud_next_pts = 0;
+	int vid_next_pts = 0;
+	int encode_video = 1;
+	int encode_audio = 1;
+	int dec_got_frame = 0;
+	int enc_got_frame = 0;
+	int frame_cnt_v = 0;
 
 	/* Initialize ffmpeg components*/
 	av_register_all();
@@ -319,29 +326,149 @@ int main()
 
 	/* 16. Resample of audio form input to output */
 	aud_convert_ctx = swr_alloc_set_opts(NULL,  
-									av_get_default_channel_layout(pCodecCtx_a->channels), 
-									pCodecCtx_a->sample_fmt,
-	                                                          pCodecCtx_a->sample_rate, 
-	                                                          av_get_default_channel_layout(ifmt_ctx_a->streams[audio_stream_index]->codec->channels), 
-	                                                          ifmt_ctx_a->streams[audio_stream_index]->codec->sample_fmt, 
-	                                                          ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 
-	                                                          0, NULL);
+										av_get_default_channel_layout(pCodecCtx_a->channels), 
+										pCodecCtx_a->sample_fmt,
+										pCodecCtx_a->sample_rate, 
+										av_get_default_channel_layout(ifmt_ctx_a->streams[audio_stream_index]->codec->channels), 
+										ifmt_ctx_a->streams[audio_stream_index]->codec->sample_fmt, 
+										ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 
+										0, NULL);
 
 	/* 17. Prepare buffers */
 	/* Prepare buffer to store yuv data to be encoded */
 	pFrameYUV = av_frame_alloc();
 	uint8_t *  output_buffer = (uint8_t *)av_malloc(avpicture_get_size(AV_PIX_FMT_YUV420P, 
-															  pCodecCtx_v->width,
-															  pCodecCtx_v->height));
+								pCodecCtx_v->width,
+								pCodecCtx_v->height));
 	avpicture_fill((AVPicture *) pFrameYUV, output_buffer, AV_PIX_FMT_YUV420P, pCodecCtx_v->width, pCodecCtx_v->height);
 
 
 	/* Prepare fifo to store audio sample to be encoded */
 	AVAudioFifo * audio_fifo = NULL;
 	audio_fifo = av_audio_fifo_alloc(pCodecCtx_a->sample_fmt, 
-		                                          pCodecCtx_a->channels, 
-		                                          1);
+									pCodecCtx_a->channels, 
+									1);
+
+	/* Initialize the buffer to store converted samples to be encoded. */
+	uint8_t **converted_input_samples = NULL;
 	
+	/**
+	* Allocate as many pointers as there are audio channels.
+	* Each pointer will later point to the audio samples of the corresponding
+	* channels (although it may be NULL for interleaved formats).
+	*/
+	if (!(converted_input_samples = (uint8_t**)calloc(pCodecCtx_a->channels,  sizeof(**converted_input_samples)))) 
+	{
+		av_log(ofmt_ctx, AV_LOG_ERROR, "Could not allocate converted input sample pointers\n");
+		return AVERROR(ENOMEM);
+	}
+
+	int64_t start_time = av_gettime();
+	AVRational time_base_q = { 1, AV_TIME_BASE };
+	while (encode_video || encode_audio)
+	{
+		if (encode_video && (!encode_audio || av_compare_ts(vid_next_pts, time_base_q, aud_next_pts, time_base_q) <= 0))
+		{
+			/* Read a video packet */
+			ret = av_read_frame(ofmt_ctx,  dec_pkt_v);
+			if(ret >= 0)
+			{
+				/* Decode video packet */
+				pFrame = av_frame_alloc();
+				if(NULL == pFrame)
+				{
+					av_log(ofmt_ctx, AV_LOG_ERROR, "Could not malloc frame\n");
+					return AVERROR(ENOMEM);
+				}
+				ret = avcodec_decode_video2(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec, 
+											 pFrame, 
+											 &dec_got_frame, 
+											 dec_pkt_v);
+				if(ret < 0)
+				{
+					av_free(pFrame);
+					av_log(NULL, AV_LOG_ERROR, "Decoding failed!\n");
+				}
+
+				/* Scale decoded image */
+				if(dec_got_frame > 0)
+				{
+					sws_scale(img_convert_ctx, 
+							pFrame->data, 
+							pFrame->linesize, 
+							0, 
+							pFrame->height, 
+							pFrameYUV->data, 
+							pFrameYUV->linesize);
+					pFrameYUV->width = pFrame->width;
+					pFrameYUV->height = pFrame->height;
+					pFrameYUV->format = AV_PIX_FMT_YUV420P;
+				
+
+
+					/* Re-encode image */
+					enc_pkt_v.data = NULL;
+					enc_pkt_v.size = 0;
+					av_init_packet(&enc_pkt_v);
+					ret = avcodec_encode_video2(pCodecCtx_v, 
+												&enc_pkt_v, 
+												pFrameYUV, 
+												&enc_got_frame);
+					
+
+					/* Mux video */
+					if(1 == enc_got_frame)
+					{
+						frame_cnt_v++;
+						enc_pkt_v.stream_index = video_stream->index;
+
+						/* Write pts */
+						AVRational time_base_o  = ofmt_ctx->streams[0]->time_base; // {1, 1000}
+						AVRational framerate_v = ofmt_ctx->streams[video_stream_index]->time_base; // {50, 2}
+						int64_t calc_duration = (double)(AV_TIME_BASE) * (1 / av_q2d(framerate_v));
+
+						enc_pkt_v.pts = av_rescale_q(frame_cnt_v * calc_duration, time_base_q,  time_base_o);
+						enc_pkt_v.dts = enc_pkt_v.pts;
+						enc_pkt_v.duration = av_rescale_q(calc_duration, time_base_q, time_base_o);
+						enc_pkt_v.pos = -1;
+
+						/* Delay */
+						vid_next_pts = frame_cnt_v*calc_duration; //general timebase
+						int64_t pts_time = av_rescale_q(enc_pkt_v.dts, time_base_o, time_base_q);
+						int64_t now_time = av_gettime() - start_time;
+						if( (pts_time > now_time) 
+					       && (vid_next_pts +pts_time - now_time)  < aud_next_pts)
+						{
+							av_usleep(pts_time - now_time);
+						}
+
+						ret = av_interleaved_write_frame(ofmt_ctx,  &enc_pkt_v);
+						av_free(&enc_pkt_v);
+					}
+				}
+
+				av_frame_free(&pFrame);
+				av_free_packet(dec_pkt_v);
+			}
+			else
+			{
+				/* Can't read input video packet */
+				if( AVERROR_EOF  == ret )
+				{
+					encode_video = 0;
+				}
+				else
+				{
+					av_log(NULL, AV_LOG_ERROR, "Can't read input video frame!\n");
+					return 0;
+				}
+			}
+		}
+		else
+		{
+
+		}
+	}
 
 
 	system("pause");
