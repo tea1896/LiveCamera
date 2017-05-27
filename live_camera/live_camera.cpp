@@ -1,4 +1,4 @@
-// live_camera.cpp : 定义控制台应用程序的入口点。
+锘?/ live_camera.cpp : 瀹氫箟鎺у埗鍙板簲鐢ㄧ▼搴忕殑鍏ュ彛鐐广€?
 // Author: tea1896@gmail.com
 
 #include "stdafx.h"
@@ -101,8 +101,10 @@ int main()
 	int AudioDeviceIndex = 0;
 	int ret = 0;
 	int i = 0;
-	const char * output_format = "mpegts";
-	const char * output_path = "udp://227.10.20.80:1234?pkt_size=1316";
+	//const char * output_format = "mpegts";
+	//const char * output_path = "udp://227.10.20.80:1234?pkt_size=1316";
+       const char * output_format = "mp4";
+	const char * output_path = "test.mp4";
 
 	AVFormatContext * ifmt_ctx_v = NULL;
 	AVFormatContext * ifmt_ctx_a = NULL;
@@ -129,17 +131,17 @@ int main()
 	int encode_audio = 1;
 	int dec_got_frame = 0;
 	int enc_got_frame = 0;
-    int dec_got_frame_a = 0;
+	int dec_got_frame_a = 0;
 	int enc_got_frame_a = 0;
 	int frame_cnt_v = 0;
-    int nb_samples = 0;
+	int nb_samples = 0;
 
 	/* Initialize ffmpeg components*/
 	av_register_all();
 	avdevice_register_all();
 	avformat_network_init();
 
-	av_log_set_level(AV_LOG_INFO);
+	av_log_set_level(AV_LOG_TRACE);
 
 	/* 1. List all video and audio devices */
 	showAllVideoDeivces();
@@ -161,10 +163,10 @@ int main()
 	snprintf(VideoDeviceName, sizeof(VideoDeviceName), "video=%s", g_Device_array[VideoDeviceIndex].c_str());
 	printf("video is %s\n", VideoDeviceName);
 
-    //if not setting rtbufsize, error messages will be shown in cmd, but you can still watch or record the stream correctly in most time
+	//if not setting rtbufsize, error messages will be shown in cmd, but you can still watch or record the stream correctly in most time
 	//setting rtbufsize will erase those error messages, however, larger rtbufsize will bring latency
-    av_dict_set(&device_param, "rtbufsize", "20M", 0);
-    
+	av_dict_set(&device_param, "rtbufsize", "20M", 0);
+
 	ret = avformat_open_input(&ifmt_ctx_v, VideoDeviceName, ifmt, &device_param);
 	if (0 != ret)
 	{
@@ -196,12 +198,12 @@ int main()
 		goto app_end;
 	}
 
-    /* Find input video decoder */  
-    if (avcodec_open2(ifmt_ctx_v->streams[video_stream_index]->codec, avcodec_find_decoder(ifmt_ctx_v->streams[video_stream_index]->codec->codec_id), NULL) < 0)
-    {
-        av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a video decoder!\n");
-        return -1;
-    }
+	/* Find input video decoder */
+	if (avcodec_open2(ifmt_ctx_v->streams[video_stream_index]->codec, avcodec_find_decoder(ifmt_ctx_v->streams[video_stream_index]->codec->codec_id), NULL) < 0)
+	{
+		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a video decoder!\n");
+		return -1;
+	}
 
 	/* 5. Open video capture device */
 	snprintf(AudioDeviceName, sizeof(AudioDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
@@ -215,6 +217,12 @@ int main()
 	else
 	{
 		av_log(ifmt_ctx_a, AV_LOG_INFO, "Audio device %s open successfully!\n", AudioDeviceName);
+	}
+        ret = avformat_find_stream_info(ifmt_ctx_a, NULL);
+	if (ret < 0)
+	{
+		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Audio get stream info failed!\n");
+		goto app_end;
 	}
 	audio_stream_index = -1;
 	for (i = 0; i<ifmt_ctx_a->nb_streams; i++)
@@ -230,12 +238,12 @@ int main()
 		goto app_end;
 	}
 
-    /* Find input audio decoder */
-    if (avcodec_open2(ifmt_ctx_a->streams[audio_stream_index]->codec, avcodec_find_decoder(ifmt_ctx_a->streams[audio_stream_index]->codec->codec_id), NULL) < 0)
-    {
-        av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a audio decoder!\n");
-        return -1;
-    }
+	/* Find input audio decoder */
+	if (avcodec_open2(ifmt_ctx_a->streams[audio_stream_index]->codec, avcodec_find_decoder(ifmt_ctx_a->streams[audio_stream_index]->codec->codec_id), NULL) < 0)
+	{
+		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a audio decoder!\n");
+		return -1;
+	}
 
 	/* 6. Initialize output */
 	ret = avformat_alloc_output_context2(&ofmt_ctx, NULL, output_format, output_path);
@@ -260,9 +268,9 @@ int main()
 	pCodecCtx_v->time_base.den = 25;
 	pCodecCtx_v->bit_rate = 1000000;
 	pCodecCtx_v->gop_size = 50;
-    pCodecCtx_v->qmin = 10;
-    pCodecCtx_v->qmax = 51;
-    pCodecCtx_v->max_b_frames = 0;
+	pCodecCtx_v->qmin = 10;
+	pCodecCtx_v->qmax = 51;
+	pCodecCtx_v->max_b_frames = 0;
 
 	/* Some formats want stream headers to be separate. */
 	if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
@@ -271,8 +279,10 @@ int main()
 	}
 
 	/* Open video encoder */
-
-    if (avcodec_open2(pCodecCtx_v, pCodec_v, &param) < 0)
+	AVDictionary *CodecCtx_v_param = 0;
+	av_dict_set(&CodecCtx_v_param, "preset", "fast", 0);
+	av_dict_set(&CodecCtx_v_param, "tune", "zerolatency", 0);
+	if (avcodec_open2(pCodecCtx_v, pCodec_v, &CodecCtx_v_param) < 0)
 	{
 		av_log(ofmt_ctx, AV_LOG_ERROR, "Open video encoder failed\n");
 		goto app_end;
@@ -330,8 +340,8 @@ int main()
 	audio_stream->codec = pCodecCtx_a;
 
 	/* 11. Open avio url */
-	ret = avio_open(&ofmt_ctx->pb,  output_path,  1);
-	if( ret < 0 )
+	ret = avio_open(&ofmt_ctx->pb, output_path, 1);
+	if (ret < 0)
 	{
 		av_log(ofmt_ctx, AV_LOG_ERROR, "Avio open failed!\n");
 		goto app_end;
@@ -341,51 +351,51 @@ int main()
 	av_dump_format(ofmt_ctx, 0, output_path, 1);
 
 	/* 13.Write header */
-	avformat_write_header(ofmt_ctx,  NULL);
+	avformat_write_header(ofmt_ctx, NULL);
 
 	/* 14.Prepare for decode */
 	//dec_pkt_v = av_packet_alloc();
-    dec_pkt_v = (AVPacket *)av_malloc(sizeof(AVPacket));
+	dec_pkt_v = (AVPacket *)av_malloc(sizeof(AVPacket));
 
 	/* 15.Convertion of video from input (RGB , jpg, and so on) to YUV420P */
-	img_convert_ctx = sws_getContext(ifmt_ctx_v->streams[video_stream_index]->codec->width, ifmt_ctx_v->streams[video_stream_index]->codec->height,  ifmt_ctx_v->streams[video_stream_index]->codec->pix_fmt, 
-								     pCodecCtx_v->width, pCodecCtx_v->height, AV_PIX_FMT_YUV420P,  SWS_BICUBIC, 
-	                                 NULL, NULL, NULL);
+	img_convert_ctx = sws_getContext(ifmt_ctx_v->streams[video_stream_index]->codec->width, ifmt_ctx_v->streams[video_stream_index]->codec->height, ifmt_ctx_v->streams[video_stream_index]->codec->pix_fmt,
+		pCodecCtx_v->width, pCodecCtx_v->height, AV_PIX_FMT_YUV420P, SWS_BICUBIC,
+		NULL, NULL, NULL);
 
 	/* 16. Resample of audio form input to output */
-	aud_convert_ctx = swr_alloc_set_opts(NULL,  
-										av_get_default_channel_layout(pCodecCtx_a->channels), 
-										pCodecCtx_a->sample_fmt,
-										pCodecCtx_a->sample_rate, 
-										av_get_default_channel_layout(ifmt_ctx_a->streams[audio_stream_index]->codec->channels), 
-										ifmt_ctx_a->streams[audio_stream_index]->codec->sample_fmt, 
-										ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 
-										0, NULL);
+	aud_convert_ctx = swr_alloc_set_opts(NULL,
+		av_get_default_channel_layout(pCodecCtx_a->channels),
+		pCodecCtx_a->sample_fmt,
+		pCodecCtx_a->sample_rate,
+		av_get_default_channel_layout(ifmt_ctx_a->streams[audio_stream_index]->codec->channels),
+		ifmt_ctx_a->streams[audio_stream_index]->codec->sample_fmt,
+		ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate,
+		0, NULL);
 
 	/* 17. Prepare buffers */
 	/* Prepare buffer to store yuv data to be encoded */
 	pFrameYUV = av_frame_alloc();
-	uint8_t *  output_buffer = (uint8_t *)av_malloc(avpicture_get_size(AV_PIX_FMT_YUV420P, 
-								pCodecCtx_v->width,
-								pCodecCtx_v->height));
-	avpicture_fill((AVPicture *) pFrameYUV, output_buffer, AV_PIX_FMT_YUV420P, pCodecCtx_v->width, pCodecCtx_v->height);
+	uint8_t *  output_buffer = (uint8_t *)av_malloc(avpicture_get_size(AV_PIX_FMT_YUV420P,
+		pCodecCtx_v->width,
+		pCodecCtx_v->height));
+	avpicture_fill((AVPicture *)pFrameYUV, output_buffer, AV_PIX_FMT_YUV420P, pCodecCtx_v->width, pCodecCtx_v->height);
 
 
 	/* Prepare fifo to store audio sample to be encoded */
 	AVAudioFifo * audio_fifo = NULL;
-	audio_fifo = av_audio_fifo_alloc(pCodecCtx_a->sample_fmt, 
-									pCodecCtx_a->channels, 
-									1);
+	audio_fifo = av_audio_fifo_alloc(pCodecCtx_a->sample_fmt,
+		pCodecCtx_a->channels,
+		1);
 
 	/* Initialize the buffer to store converted samples to be encoded. */
 	uint8_t **converted_input_samples = NULL;
-	
+
 	/**
 	* Allocate as many pointers as there are audio channels.
 	* Each pointer will later point to the audio samples of the corresponding
 	* channels (although it may be NULL for interleaved formats).
 	*/
-	if (!(converted_input_samples = (uint8_t**)calloc(pCodecCtx_a->channels,  sizeof(**converted_input_samples)))) 
+	if (!(converted_input_samples = (uint8_t**)calloc(pCodecCtx_a->channels, sizeof(**converted_input_samples))))
 	{
 		av_log(ofmt_ctx, AV_LOG_ERROR, "Could not allocate converted input sample pointers\n");
 		goto app_end;
@@ -394,94 +404,86 @@ int main()
 	int64_t start_time = av_gettime();
 	AVRational time_base_q = { 1, AV_TIME_BASE };
 
-    av_log(NULL,AV_LOG_DEBUG, "To encoding .. \n");
-    //system("pause");
+	av_log(NULL, AV_LOG_DEBUG, "To encoding .. \n");
+	//system("pause");
 	while (encode_video || encode_audio)
 	{
 		if (encode_video && (!encode_audio || av_compare_ts(vid_next_pts, time_base_q, aud_next_pts, time_base_q) <= 0))
 		{
-            if(1 == exit_thread)
-            {
-                break;
-            }
+			if (1 == exit_thread)
+			{
+				break;
+			}
 
-            av_log(NULL, AV_LOG_DEBUG, "Recoding a video frame!\n");
-        
+			av_log(ofmt_ctx, AV_LOG_DEBUG, "Recoding a video frame!\n");
+
 			/* Read a video packet */
-			ret = av_read_frame(ifmt_ctx_v,  dec_pkt_v);
-			if(ret >= 0)
+			ret = av_read_frame(ifmt_ctx_v, dec_pkt_v);
+			if (ret >= 0)
 			{
 				/* Decode video packet */
 				pFrame = av_frame_alloc();
-				if(NULL == pFrame)
+				if (NULL == pFrame)
 				{
 					av_log(ofmt_ctx, AV_LOG_ERROR, "Could not malloc frame\n");
 					goto app_end;
 				}
-
-                if(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec->codec == NULL)
-                {
-                    av_log(NULL, AV_LOG_ERROR, "Video decoder is null !\n" , ret);
-                }
-
-                if(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec->codec_type != AVMEDIA_TYPE_VIDEO)
-                {
-                    av_log(NULL, AV_LOG_ERROR, "Video type is wrong !\n" , ret);
-                }
-                    
                 
-				ret = avcodec_decode_video2(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec, 
-											 pFrame, 
-											 &dec_got_frame, 
-											 dec_pkt_v);
-				if(ret < 0)
+				ret = avcodec_decode_video2(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec,
+					pFrame,
+					&dec_got_frame,
+					dec_pkt_v);
+				if (ret < 0)
 				{
 					av_free(pFrame);
-					av_log(NULL, AV_LOG_ERROR, "Video decoding failed [%d]!\n" , ret);
+					av_log(NULL, AV_LOG_ERROR, "Video decoding failed [%d]!\n", ret);
+                                    goto app_end;
 				}
 
 				/* Scale decoded image */
-				if(dec_got_frame > 0)
+				if (dec_got_frame > 0)
 				{
-					sws_scale(img_convert_ctx, 
-							pFrame->data, 
-							pFrame->linesize, 
-							0, 
-							pFrame->height, 
-							pFrameYUV->data, 
-							pFrameYUV->linesize);
+					sws_scale(img_convert_ctx,
+						(const uint8_t* const*)pFrame->data,
+						pFrame->linesize,
+						0,
+						pFrame->height,
+						pFrameYUV->data,
+						pFrameYUV->linesize);
 					pFrameYUV->width = pFrame->width;
 					pFrameYUV->height = pFrame->height;
 					pFrameYUV->format = AV_PIX_FMT_YUV420P;
-				
+
 
 
 					/* Re-encode image */
 					enc_pkt_v.data = NULL;
 					enc_pkt_v.size = 0;
 					av_init_packet(&enc_pkt_v);
-					ret = avcodec_encode_video2(pCodecCtx_v, 
-												&enc_pkt_v, 
-												pFrameYUV, 
-												&enc_got_frame);
-                    if( 0 != ret)
-                    {
-                        av_log(NULL, AV_LOG_DEBUG, "Vedio encoder failed [%d]\n", ret);
-                    }
-					
+					ret = avcodec_encode_video2(pCodecCtx_v,
+						&enc_pkt_v,
+						pFrameYUV,
+						&enc_got_frame);
+					if (0 != ret)
+					{
+						av_log(NULL, AV_LOG_DEBUG, "Vedio encoder failed [%d]\n", ret);
+					}
+
 
 					/* Mux video */
-					if(1 == enc_got_frame)
+					if (1 == enc_got_frame)
 					{
+                                            av_log(NULL, AV_LOG_DEBUG, "Encode video successfully!\n");
+                    
 						frame_cnt_v++;
 						enc_pkt_v.stream_index = video_stream->index;
 
 						/* Write pts */
-						AVRational time_base_o  = ofmt_ctx->streams[0]->time_base; // {1, 1000}
+						AVRational time_base_o = ofmt_ctx->streams[0]->time_base; // {1, 1000}
 						AVRational framerate_v = ofmt_ctx->streams[video_stream_index]->time_base; // {50, 2}
 						int64_t calc_duration = (double)(AV_TIME_BASE) * (1 / av_q2d(framerate_v));
 
-						enc_pkt_v.pts = av_rescale_q(frame_cnt_v * calc_duration, time_base_q,  time_base_o);
+						enc_pkt_v.pts = av_rescale_q(frame_cnt_v * calc_duration, time_base_q, time_base_o);
 						enc_pkt_v.dts = enc_pkt_v.pts;
 						enc_pkt_v.duration = av_rescale_q(calc_duration, time_base_q, time_base_o);
 						enc_pkt_v.pos = -1;
@@ -490,16 +492,24 @@ int main()
 						vid_next_pts = frame_cnt_v*calc_duration; //general timebase
 						int64_t pts_time = av_rescale_q(enc_pkt_v.dts, time_base_o, time_base_q);
 						int64_t now_time = av_gettime() - start_time;
-						if( (pts_time > now_time) 
-					       && (vid_next_pts +pts_time - now_time)  < aud_next_pts)
+						if ((pts_time > now_time)
+							&& (vid_next_pts + pts_time - now_time)  < aud_next_pts)
 						{
 							av_usleep(pts_time - now_time);
 						}
 
-						ret = av_interleaved_write_frame(ofmt_ctx,  &enc_pkt_v);
+						ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt_v);
 						av_free(&enc_pkt_v);
 					}
+                                    else
+                                    {
+                                        av_log(NULL, AV_LOG_DEBUG, "Can't encode video !\n");
+                                    }
 				}
+                            else
+                            {
+                                av_log(NULL, AV_LOG_DEBUG, "Can't decode video successfully!\n");    
+                            }
 
 				av_frame_free(&pFrame);
 				av_free_packet(dec_pkt_v);
@@ -507,8 +517,9 @@ int main()
 			else
 			{
 				/* Can't read input video packet */
-				if( AVERROR_EOF  == ret )
+				if (AVERROR_EOF == ret)
 				{
+				        av_log(NULL, AV_LOG_ERROR, "Read eof!\n");
 					encode_video = 0;
 				}
 				else
@@ -520,238 +531,238 @@ int main()
 		}
 		else
 		{
-            // audio transcoding 
-            const int output_frame_size = pCodecCtx_a->frame_size;
+			// audio transcoding 
+			const int output_frame_size = pCodecCtx_a->frame_size;
 
-            if(1 == exit_thread)
-            {
-                break;
-            }
+			if (1 == exit_thread)
+			{
+				break;
+			}
 
-            av_log(NULL, AV_LOG_DEBUG, "Recoding a audio!\n");
+			av_log(NULL, AV_LOG_DEBUG, "Recoding a audio!\n");
 
-            /**
-            * Make sure that there is one frame worth of samples in the FIFO
-            * buffer so that the encoder can do its work.
-            * Since the decoder's and the encoder's frame size may differ, we
-            * need to FIFO buffer to store as many frames worth of input samples
-            * that they make up at least one frame worth of output samples.
-            */
-            while(av_audio_fifo_size(audio_fifo) < output_frame_size)
-            {
-                /**
-                * Decode one frame worth of audio samples, convert it to the
-                * output sample format and put it into the FIFO buffer.
-                */
-                AVFrame * input_frame = av_frame_alloc();
-                if(!input_frame)
-                {
-                    goto app_end;
-                }
+			/**
+			* Make sure that there is one frame worth of samples in the FIFO
+			* buffer so that the encoder can do its work.
+			* Since the decoder's and the encoder's frame size may differ, we
+			* need to FIFO buffer to store as many frames worth of input samples
+			* that they make up at least one frame worth of output samples.
+			*/
+			while (av_audio_fifo_size(audio_fifo) < output_frame_size)
+			{
+				/**
+				* Decode one frame worth of audio samples, convert it to the
+				* output sample format and put it into the FIFO buffer.
+				*/
+				AVFrame * input_frame = av_frame_alloc();
+				if (!input_frame)
+				{
+					goto app_end;
+				}
 
-                /** Decode one frame worth of audio samples. */
-    			/** Packet used for temporary storage. */
-    			AVPacket input_packet;
-    			av_init_packet(&input_packet);
-    			input_packet.data = NULL;
-    			input_packet.size = 0;
-    			
-    			/** Read one audio frame from the input file into a temporary packet. */
-    			if ((ret = av_read_frame(ifmt_ctx_a, &input_packet)) < 0) 
-                {
-    				/** If we are at the end of the file, flush the decoder below. */
-    				if (ret == AVERROR_EOF)
-    				{
-    					encode_audio = 0;
-    				}
-    				else
-    				{
-    					printf("Could not read audio frame\n");
-    					return ret;
-    				}					
-    			}
+				/** Decode one frame worth of audio samples. */
+				/** Packet used for temporary storage. */
+				AVPacket input_packet;
+				av_init_packet(&input_packet);
+				input_packet.data = NULL;
+				input_packet.size = 0;
 
-    			/**
-    			* Decode the audio frame stored in the temporary packet.
-    			* The input audio stream decoder is used to do this.
-    			* If we are at the end of the file, pass an empty packet to the decoder
-    			* to flush it.
-    			*/
-    			if ((ret = avcodec_decode_audio4(ifmt_ctx_a->streams[audio_stream_index]->codec, input_frame,
-    				&dec_got_frame_a, &input_packet)) < 0) 
-    		    {
-    				printf("Could not decode audio frame\n");
-    				return ret;
-    			}
-    			av_packet_unref(&input_packet);
-    			/** If there is decoded data, convert and store it */
-    			if (dec_got_frame_a) 
-                {
-    				/**
-    				* Allocate memory for the samples of all channels in one consecutive
-    				* block for convenience.
-    				*/
-    				if ((ret = av_samples_alloc(converted_input_samples, NULL,
-    					pCodecCtx_a->channels,
-    					input_frame->nb_samples,
-    					pCodecCtx_a->sample_fmt, 0)) < 0) 
-    			    {
-    					printf("Could not allocate converted input samples\n");
-    					av_freep(&(*converted_input_samples)[0]);
-    					free(*converted_input_samples);
-    					return ret;
-    				}
+				/** Read one audio frame from the input file into a temporary packet. */
+				if ((ret = av_read_frame(ifmt_ctx_a, &input_packet)) < 0)
+				{
+					/** If we are at the end of the file, flush the decoder below. */
+					if (ret == AVERROR_EOF)
+					{
+						encode_audio = 0;
+					}
+					else
+					{
+						printf("Could not read audio frame\n");
+						return ret;
+					}
+				}
 
-    				/**
-    				* Convert the input samples to the desired output sample format.
-    				* This requires a temporary storage provided by converted_input_samples.
-    				*/
-    				/** Convert the samples using the resampler. */
-    				if ((ret = swr_convert(aud_convert_ctx,
-    					converted_input_samples, input_frame->nb_samples,
-    					(const uint8_t**)input_frame->extended_data, input_frame->nb_samples)) < 0) 
-    	            {
-    					printf("Could not convert input samples\n");
-    					return ret;
-    				}
+				/**
+				* Decode the audio frame stored in the temporary packet.
+				* The input audio stream decoder is used to do this.
+				* If we are at the end of the file, pass an empty packet to the decoder
+				* to flush it.
+				*/
+				if ((ret = avcodec_decode_audio4(ifmt_ctx_a->streams[audio_stream_index]->codec, input_frame,
+					&dec_got_frame_a, &input_packet)) < 0)
+				{
+					printf("Could not decode audio frame\n");
+					return ret;
+				}
+				av_packet_unref(&input_packet);
+				/** If there is decoded data, convert and store it */
+				if (dec_got_frame_a)
+				{
+					/**
+					* Allocate memory for the samples of all channels in one consecutive
+					* block for convenience.
+					*/
+					if ((ret = av_samples_alloc(converted_input_samples, NULL,
+						pCodecCtx_a->channels,
+						input_frame->nb_samples,
+						pCodecCtx_a->sample_fmt, 0)) < 0)
+					{
+						printf("Could not allocate converted input samples\n");
+						av_freep(&(*converted_input_samples)[0]);
+						free(*converted_input_samples);
+						return ret;
+					}
 
-    				/** Add the converted input samples to the FIFO buffer for later processing. */
-    				/**
-    				* Make the FIFO as large as it needs to be to hold both,
-    				* the old and the new samples.
-    				*/
-    				if ((ret = av_audio_fifo_realloc(audio_fifo, av_audio_fifo_size(audio_fifo) + input_frame->nb_samples)) < 0) 
-                    {
-    					printf("Could not reallocate FIFO\n");
-    					return ret;
-    				}
+					/**
+					* Convert the input samples to the desired output sample format.
+					* This requires a temporary storage provided by converted_input_samples.
+					*/
+					/** Convert the samples using the resampler. */
+					if ((ret = swr_convert(aud_convert_ctx,
+						converted_input_samples, input_frame->nb_samples,
+						(const uint8_t**)input_frame->extended_data, input_frame->nb_samples)) < 0)
+					{
+						printf("Could not convert input samples\n");
+						return ret;
+					}
 
-    				/** Store the new samples in the FIFO buffer. */
-    				if (av_audio_fifo_write(audio_fifo, (void **)converted_input_samples,
-    					input_frame->nb_samples) < input_frame->nb_samples) 
-    		        {
-    					printf("Could not write data to FIFO\n");
-    					return AVERROR_EXIT;
-    				}				
-    			}
-            }
+					/** Add the converted input samples to the FIFO buffer for later processing. */
+					/**
+					* Make the FIFO as large as it needs to be to hold both,
+					* the old and the new samples.
+					*/
+					if ((ret = av_audio_fifo_realloc(audio_fifo, av_audio_fifo_size(audio_fifo) + input_frame->nb_samples)) < 0)
+					{
+						printf("Could not reallocate FIFO\n");
+						return ret;
+					}
 
-            /**
-            * If we have enough samples for the encoder, we encode them.
-            * At the end of the file, we pass the remaining samples to
-            * the encoder.
-            */
-            if (av_audio_fifo_size(audio_fifo) >= output_frame_size)
-                /**
-                * Take one frame worth of audio samples from the FIFO buffer,
-                * encode it and write it to the output file.
-                */
-            {
-                /** Temporary storage of the output samples of the frame written to the file. */
-    			AVFrame *output_frame=av_frame_alloc();
-    			if (!output_frame)
-    			{
-    				ret = AVERROR(ENOMEM);
-    				return ret;
-    			}
-    			/**
-    			* Use the maximum number of possible samples per frame.
-    			* If there is less than the maximum possible frame size in the FIFO
-    			* buffer use this number. Otherwise, use the maximum possible frame size
-    			*/
-    			const int frame_size = FFMIN(av_audio_fifo_size(audio_fifo),
-    				pCodecCtx_a->frame_size);
-    			
-    			/** Initialize temporary storage for one output frame. */
-    			/**
-    			* Set the frame's parameters, especially its size and format.
-    			* av_frame_get_buffer needs this to allocate memory for the
-    			* audio samples of the frame.
-    			* Default channel layouts based on the number of channels
-    			* are assumed for simplicity.
-    			*/
-    			output_frame->nb_samples = frame_size;
-    			output_frame->channel_layout = pCodecCtx_a->channel_layout;
-    			output_frame->format = pCodecCtx_a->sample_fmt;
-    			output_frame->sample_rate = pCodecCtx_a->sample_rate;
+					/** Store the new samples in the FIFO buffer. */
+					if (av_audio_fifo_write(audio_fifo, (void **)converted_input_samples,
+						input_frame->nb_samples) < input_frame->nb_samples)
+					{
+						printf("Could not write data to FIFO\n");
+						return AVERROR_EXIT;
+					}
+				}
+			}
 
-    			/**
-    			* Allocate the samples of the created frame. This call will make
-    			* sure that the audio frame can hold as many samples as specified.
-    			*/
-    			if ((ret = av_frame_get_buffer(output_frame, 0)) < 0) {
-    				printf("Could not allocate output frame samples\n");
-    				av_frame_free(&output_frame);
-    				return ret;
-    			}
-    			
-    			/**
-    			* Read as many samples from the FIFO buffer as required to fill the frame.
-    			* The samples are stored in the frame temporarily.
-    			*/
-    			if (av_audio_fifo_read(audio_fifo, (void **)output_frame->data, frame_size) < frame_size) {
-    				printf("Could not read data from FIFO\n");
-    				return AVERROR_EXIT;
-    			}
+			/**
+			* If we have enough samples for the encoder, we encode them.
+			* At the end of the file, we pass the remaining samples to
+			* the encoder.
+			*/
+			if (av_audio_fifo_size(audio_fifo) >= output_frame_size)
+				/**
+				* Take one frame worth of audio samples from the FIFO buffer,
+				* encode it and write it to the output file.
+				*/
+			{
+				/** Temporary storage of the output samples of the frame written to the file. */
+				AVFrame *output_frame = av_frame_alloc();
+				if (!output_frame)
+				{
+					ret = AVERROR(ENOMEM);
+					return ret;
+				}
+				/**
+				* Use the maximum number of possible samples per frame.
+				* If there is less than the maximum possible frame size in the FIFO
+				* buffer use this number. Otherwise, use the maximum possible frame size
+				*/
+				const int frame_size = FFMIN(av_audio_fifo_size(audio_fifo),
+					pCodecCtx_a->frame_size);
 
-    			/** Encode one frame worth of audio samples. */
-    			/** Packet used for temporary storage. */
-    			AVPacket output_packet;
-    			av_init_packet(&output_packet);
-    			output_packet.data = NULL;
-    			output_packet.size = 0;
-    			
-    			/** Set a timestamp based on the sample rate for the container. */
-    			if (output_frame) 
-                {
-    				nb_samples += output_frame->nb_samples;
-    			}
+				/** Initialize temporary storage for one output frame. */
+				/**
+				* Set the frame's parameters, especially its size and format.
+				* av_frame_get_buffer needs this to allocate memory for the
+				* audio samples of the frame.
+				* Default channel layouts based on the number of channels
+				* are assumed for simplicity.
+				*/
+				output_frame->nb_samples = frame_size;
+				output_frame->channel_layout = pCodecCtx_a->channel_layout;
+				output_frame->format = pCodecCtx_a->sample_fmt;
+				output_frame->sample_rate = pCodecCtx_a->sample_rate;
 
-    			/**
-    			* Encode the audio frame and store it in the temporary packet.
-    			* The output audio stream encoder is used to do this.
-    			*/
-    			if ((ret = avcodec_encode_audio2(pCodecCtx_a, &output_packet,
-    				output_frame, &enc_got_frame_a)) < 0) 
-    			{
-    				printf("Could not encode frame\n");
-    				av_packet_unref(&output_packet);
-    				return ret;
-    			}
+				/**
+				* Allocate the samples of the created frame. This call will make
+				* sure that the audio frame can hold as many samples as specified.
+				*/
+				if ((ret = av_frame_get_buffer(output_frame, 0)) < 0) {
+					printf("Could not allocate output frame samples\n");
+					av_frame_free(&output_frame);
+					return ret;
+				}
 
-    			/** Write one audio frame from the temporary packet to the output file. */
-    			if (enc_got_frame_a) 
-                {
+				/**
+				* Read as many samples from the FIFO buffer as required to fill the frame.
+				* The samples are stored in the frame temporarily.
+				*/
+				if (av_audio_fifo_read(audio_fifo, (void **)output_frame->data, frame_size) < frame_size) {
+					printf("Could not read data from FIFO\n");
+					return AVERROR_EXIT;
+				}
 
-    				output_packet.stream_index = 1;
+				/** Encode one frame worth of audio samples. */
+				/** Packet used for temporary storage. */
+				AVPacket output_packet;
+				av_init_packet(&output_packet);
+				output_packet.data = NULL;
+				output_packet.size = 0;
 
-    				AVRational time_base = ofmt_ctx->streams[1]->time_base;
-    				AVRational r_framerate1 = { ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 1 };// { 44100, 1};  
-    				int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  //内部时间戳  
+				/** Set a timestamp based on the sample rate for the container. */
+				if (output_frame)
+				{
+					nb_samples += output_frame->nb_samples;
+				}
 
-    				output_packet.pts = av_rescale_q(nb_samples*calc_duration, time_base_q, time_base);
-    				output_packet.dts = output_packet.pts;
-    				output_packet.duration = output_frame->nb_samples;
+				/**
+				* Encode the audio frame and store it in the temporary packet.
+				* The output audio stream encoder is used to do this.
+				*/
+				if ((ret = avcodec_encode_audio2(pCodecCtx_a, &output_packet,
+					output_frame, &enc_got_frame_a)) < 0)
+				{
+					printf("Could not encode frame\n");
+					av_packet_unref(&output_packet);
+					return ret;
+				}
 
-    				//printf("audio pts : %d\n", output_packet.pts);
-    				aud_next_pts = nb_samples*calc_duration;
+				/** Write one audio frame from the temporary packet to the output file. */
+				if (enc_got_frame_a)
+				{
 
-    				int64_t pts_time = av_rescale_q(output_packet.pts, time_base, time_base_q);
-    				int64_t now_time = av_gettime() - start_time;
-    				if ((pts_time > now_time) && ((aud_next_pts + pts_time - now_time)<vid_next_pts))
-    					av_usleep(pts_time - now_time);
+					output_packet.stream_index = 1;
 
-    				if ((ret = av_interleaved_write_frame(ofmt_ctx, &output_packet)) < 0) 
-                    {
-    					printf("Could not write frame\n");
-    					av_packet_unref(&output_packet);
-    					return ret;
-    				}
+					AVRational time_base = ofmt_ctx->streams[1]->time_base;
+					AVRational r_framerate1 = { ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 1 };// { 44100, 1};  
+					int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  //鍐呴儴鏃堕棿鎴? 
 
-    				av_packet_unref(&output_packet);
-    			}			
-    			av_frame_free(&output_frame);		
-            } 
+					output_packet.pts = av_rescale_q(nb_samples*calc_duration, time_base_q, time_base);
+					output_packet.dts = output_packet.pts;
+					output_packet.duration = output_frame->nb_samples;
+
+					//printf("audio pts : %d\n", output_packet.pts);
+					aud_next_pts = nb_samples*calc_duration;
+
+					int64_t pts_time = av_rescale_q(output_packet.pts, time_base, time_base_q);
+					int64_t now_time = av_gettime() - start_time;
+					if ((pts_time > now_time) && ((aud_next_pts + pts_time - now_time)<vid_next_pts))
+						av_usleep(pts_time - now_time);
+
+					if ((ret = av_interleaved_write_frame(ofmt_ctx, &output_packet)) < 0)
+					{
+						printf("Could not write frame\n");
+						av_packet_unref(&output_packet);
+						return ret;
+					}
+
+					av_packet_unref(&output_packet);
+				}
+				av_frame_free(&output_frame);
+			}
 		}
 	}
 
