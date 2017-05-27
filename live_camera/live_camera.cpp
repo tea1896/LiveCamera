@@ -163,7 +163,7 @@ int main()
 
     //if not setting rtbufsize, error messages will be shown in cmd, but you can still watch or record the stream correctly in most time
 	//setting rtbufsize will erase those error messages, however, larger rtbufsize will bring latency
-    av_dict_set(&device_param, "rtbufsize", "10M", 0);
+    av_dict_set(&device_param, "rtbufsize", "20M", 0);
     
 	ret = avformat_open_input(&ifmt_ctx_v, VideoDeviceName, ifmt, &device_param);
 	if (0 != ret)
@@ -196,9 +196,16 @@ int main()
 		goto app_end;
 	}
 
+    /* Find input video decoder */  
+    if (avcodec_open2(ifmt_ctx_v->streams[video_stream_index]->codec, avcodec_find_decoder(ifmt_ctx_v->streams[video_stream_index]->codec->codec_id), NULL) < 0)
+    {
+        av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a video decoder!\n");
+        return -1;
+    }
+
 	/* 5. Open video capture device */
 	snprintf(AudioDeviceName, sizeof(AudioDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
-	printf("audio is %s\n", AudioDeviceName);
+	av_log(NULL, AV_LOG_DEBUG, "audio is %s\n", AudioDeviceName);
 	ret = avformat_open_input(&ifmt_ctx_a, AudioDeviceName, ifmt, &device_param);
 	if (ret < 0)
 	{
@@ -223,6 +230,13 @@ int main()
 		goto app_end;
 	}
 
+    /* Find input audio decoder */
+    if (avcodec_open2(ifmt_ctx_a->streams[audio_stream_index]->codec, avcodec_find_decoder(ifmt_ctx_a->streams[audio_stream_index]->codec->codec_id), NULL) < 0)
+    {
+        av_log(ifmt_ctx_v, AV_LOG_ERROR, "Can't find a audio decoder!\n");
+        return -1;
+    }
+
 	/* 6. Initialize output */
 	ret = avformat_alloc_output_context2(&ofmt_ctx, NULL, output_format, output_path);
 	if (ret < 0)
@@ -246,6 +260,9 @@ int main()
 	pCodecCtx_v->time_base.den = 25;
 	pCodecCtx_v->bit_rate = 1000000;
 	pCodecCtx_v->gop_size = 50;
+    pCodecCtx_v->qmin = 10;
+    pCodecCtx_v->qmax = 51;
+    pCodecCtx_v->max_b_frames = 0;
 
 	/* Some formats want stream headers to be separate. */
 	if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
@@ -254,6 +271,7 @@ int main()
 	}
 
 	/* Open video encoder */
+
     if (avcodec_open2(pCodecCtx_v, pCodec_v, &param) < 0)
 	{
 		av_log(ofmt_ctx, AV_LOG_ERROR, "Open video encoder failed\n");
@@ -326,12 +344,13 @@ int main()
 	avformat_write_header(ofmt_ctx,  NULL);
 
 	/* 14.Prepare for decode */
-	dec_pkt_v = av_packet_alloc();
+	//dec_pkt_v = av_packet_alloc();
+    dec_pkt_v = (AVPacket *)av_malloc(sizeof(AVPacket));
 
 	/* 15.Convertion of video from input (RGB , jpg, and so on) to YUV420P */
 	img_convert_ctx = sws_getContext(ifmt_ctx_v->streams[video_stream_index]->codec->width, ifmt_ctx_v->streams[video_stream_index]->codec->height,  ifmt_ctx_v->streams[video_stream_index]->codec->pix_fmt, 
-								    ifmt_ctx_v->streams[video_stream_index]->codec->width, ifmt_ctx_v->streams[video_stream_index]->codec->height, AV_PIX_FMT_YUV420P,  SWS_BICUBIC, 
-	                                                     NULL, NULL, NULL);
+								     pCodecCtx_v->width, pCodecCtx_v->height, AV_PIX_FMT_YUV420P,  SWS_BICUBIC, 
+	                                 NULL, NULL, NULL);
 
 	/* 16. Resample of audio form input to output */
 	aud_convert_ctx = swr_alloc_set_opts(NULL,  
@@ -376,7 +395,7 @@ int main()
 	AVRational time_base_q = { 1, AV_TIME_BASE };
 
     av_log(NULL,AV_LOG_DEBUG, "To encoding .. \n");
-    system("pause");
+    //system("pause");
 	while (encode_video || encode_audio)
 	{
 		if (encode_video && (!encode_audio || av_compare_ts(vid_next_pts, time_base_q, aud_next_pts, time_base_q) <= 0))
@@ -389,7 +408,7 @@ int main()
             av_log(NULL, AV_LOG_DEBUG, "Recoding a video frame!\n");
         
 			/* Read a video packet */
-			ret = av_read_frame(ofmt_ctx,  dec_pkt_v);
+			ret = av_read_frame(ifmt_ctx_v,  dec_pkt_v);
 			if(ret >= 0)
 			{
 				/* Decode video packet */
@@ -399,6 +418,18 @@ int main()
 					av_log(ofmt_ctx, AV_LOG_ERROR, "Could not malloc frame\n");
 					goto app_end;
 				}
+
+                if(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec->codec == NULL)
+                {
+                    av_log(NULL, AV_LOG_ERROR, "Video decoder is null !\n" , ret);
+                }
+
+                if(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec->codec_type != AVMEDIA_TYPE_VIDEO)
+                {
+                    av_log(NULL, AV_LOG_ERROR, "Video type is wrong !\n" , ret);
+                }
+                    
+                
 				ret = avcodec_decode_video2(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec, 
 											 pFrame, 
 											 &dec_got_frame, 
@@ -406,7 +437,7 @@ int main()
 				if(ret < 0)
 				{
 					av_free(pFrame);
-					av_log(NULL, AV_LOG_ERROR, "Decoding failed!\n");
+					av_log(NULL, AV_LOG_ERROR, "Video decoding failed [%d]!\n" , ret);
 				}
 
 				/* Scale decoded image */
@@ -433,6 +464,10 @@ int main()
 												&enc_pkt_v, 
 												pFrameYUV, 
 												&enc_got_frame);
+                    if( 0 != ret)
+                    {
+                        av_log(NULL, AV_LOG_DEBUG, "Vedio encoder failed [%d]\n", ret);
+                    }
 					
 
 					/* Mux video */
