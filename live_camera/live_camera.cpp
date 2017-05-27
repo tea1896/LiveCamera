@@ -1,4 +1,4 @@
-锘?/ live_camera.cpp : 瀹氫箟鎺у埗鍙板簲鐢ㄧ▼搴忕殑鍏ュ彛鐐广€?
+// live_camera.cpp : 定义控制台应用程序的入口点。
 // Author: tea1896@gmail.com
 
 #include "stdafx.h"
@@ -141,7 +141,7 @@ int main()
 	avdevice_register_all();
 	avformat_network_init();
 
-	av_log_set_level(AV_LOG_TRACE);
+	av_log_set_level(AV_LOG_DEBUG);
 
 	/* 1. List all video and audio devices */
 	showAllVideoDeivces();
@@ -408,8 +408,9 @@ int main()
 	//system("pause");
 	while (encode_video || encode_audio)
 	{
-		if (encode_video && (!encode_audio || av_compare_ts(vid_next_pts, time_base_q, aud_next_pts, time_base_q) <= 0))
-		{
+		//if (encode_video && (!encode_audio || av_compare_ts(vid_next_pts, time_base_q, aud_next_pts, time_base_q) <= 0))
+                if (encode_video)          
+                {
 			if (1 == exit_thread)
 			{
 				break;
@@ -473,12 +474,13 @@ int main()
 					/* Mux video */
 					if (1 == enc_got_frame)
 					{
-                                            av_log(NULL, AV_LOG_DEBUG, "Encode video successfully!\n");
+                                            av_log(NULL, AV_LOG_DEBUG, "Encode video start!\n");
                     
 						frame_cnt_v++;
 						enc_pkt_v.stream_index = video_stream->index;
 
 						/* Write pts */
+                                           av_log(NULL, AV_LOG_DEBUG, "Writ to pts!\n");
 						AVRational time_base_o = ofmt_ctx->streams[0]->time_base; // {1, 1000}
 						AVRational framerate_v = ofmt_ctx->streams[video_stream_index]->time_base; // {50, 2}
 						int64_t calc_duration = (double)(AV_TIME_BASE) * (1 / av_q2d(framerate_v));
@@ -489,17 +491,26 @@ int main()
 						enc_pkt_v.pos = -1;
 
 						/* Delay */
+                                           av_log(NULL, AV_LOG_DEBUG, "Delay!\n"); 
 						vid_next_pts = frame_cnt_v*calc_duration; //general timebase
 						int64_t pts_time = av_rescale_q(enc_pkt_v.dts, time_base_o, time_base_q);
 						int64_t now_time = av_gettime() - start_time;
 						if ((pts_time > now_time)
 							&& (vid_next_pts + pts_time - now_time)  < aud_next_pts)
 						{
+						       av_log(NULL, AV_LOG_DEBUG, "ulseep %d!\n", pts_time - now_time);
 							av_usleep(pts_time - now_time);
 						}
 
+                                            av_log(NULL, AV_LOG_DEBUG, "To write !\n"); 
 						ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt_v);
+                                            if( 0 != ret)
+                                            {
+                                                av_log(ofmt_ctx, AV_LOG_ERROR, "Write frame failed %d !\n", ret); 
+                                            }
+                                             av_log(NULL, AV_LOG_DEBUG, "Write finished !\n"); 
 						av_free(&enc_pkt_v);
+                                            av_log(NULL, AV_LOG_DEBUG, "Encode video finished!\n");
 					}
                                     else
                                     {
@@ -738,7 +749,7 @@ int main()
 
 					AVRational time_base = ofmt_ctx->streams[1]->time_base;
 					AVRational r_framerate1 = { ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 1 };// { 44100, 1};  
-					int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  //鍐呴儴鏃堕棿鎴? 
+					int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  //内部时间戳  
 
 					output_packet.pts = av_rescale_q(nb_samples*calc_duration, time_base_q, time_base);
 					output_packet.dts = output_packet.pts;
