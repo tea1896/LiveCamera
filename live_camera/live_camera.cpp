@@ -101,10 +101,10 @@ int main()
 	int AudioDeviceIndex = 0;
 	int ret = 0;
 	int i = 0;
-	//const char * output_format = "mpegts";
-	//const char * output_path = "udp://227.10.20.80:1234?pkt_size=1316";
-       const char * output_format = "mp4";
-	const char * output_path = "test.mp4";
+	const char * output_format = "mpegts";
+	const char * output_path = "udp://227.10.20.80:1234?pkt_size=1316";
+	//const char * output_format = "mp4";
+	//const char * output_path = "test.mp4";
 
 	AVFormatContext * ifmt_ctx_v = NULL;
 	AVFormatContext * ifmt_ctx_a = NULL;
@@ -143,6 +143,7 @@ int main()
 
 	av_log_set_level(AV_LOG_DEBUG);
 
+
 	/* 1. List all video and audio devices */
 	showAllVideoDeivces();
 
@@ -165,7 +166,7 @@ int main()
 
 	//if not setting rtbufsize, error messages will be shown in cmd, but you can still watch or record the stream correctly in most time
 	//setting rtbufsize will erase those error messages, however, larger rtbufsize will bring latency
-	av_dict_set(&device_param, "rtbufsize", "20M", 0);
+	av_dict_set(&device_param, "rtbufsize", "100M", 0);
 
 	ret = avformat_open_input(&ifmt_ctx_v, VideoDeviceName, ifmt, &device_param);
 	if (0 != ret)
@@ -190,6 +191,7 @@ int main()
 		if (ifmt_ctx_v->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
 		{
 			video_stream_index = i;
+			break;
 		}
 	}
 	if (-1 == video_stream_index)
@@ -205,7 +207,7 @@ int main()
 		return -1;
 	}
 
-	/* 5. Open video capture device */
+	/* 5. Open audio capture device */
 	snprintf(AudioDeviceName, sizeof(AudioDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
 	av_log(NULL, AV_LOG_DEBUG, "audio is %s\n", AudioDeviceName);
 	ret = avformat_open_input(&ifmt_ctx_a, AudioDeviceName, ifmt, &device_param);
@@ -218,7 +220,7 @@ int main()
 	{
 		av_log(ifmt_ctx_a, AV_LOG_INFO, "Audio device %s open successfully!\n", AudioDeviceName);
 	}
-        ret = avformat_find_stream_info(ifmt_ctx_a, NULL);
+	ret = avformat_find_stream_info(ifmt_ctx_a, NULL);
 	if (ret < 0)
 	{
 		av_log(ifmt_ctx_v, AV_LOG_ERROR, "Audio get stream info failed!\n");
@@ -230,6 +232,7 @@ int main()
 		if (AVMEDIA_TYPE_AUDIO == ifmt_ctx_a->streams[i]->codec->codec_type)
 		{
 			audio_stream_index = i;
+			break;
 		}
 	}
 	if (-1 == audio_stream_index)
@@ -266,17 +269,16 @@ int main()
 	pCodecCtx_v->height = ifmt_ctx_v->streams[video_stream_index]->codec->height;
 	pCodecCtx_v->time_base.num = 1;
 	pCodecCtx_v->time_base.den = 25;
-	pCodecCtx_v->bit_rate = 1000000;
-	pCodecCtx_v->gop_size = 50;
-	pCodecCtx_v->qmin = 10;
-	pCodecCtx_v->qmax = 51;
-	pCodecCtx_v->max_b_frames = 0;
-
+	pCodecCtx_v->bit_rate = 300000;
+	pCodecCtx_v->gop_size = 250;
 	/* Some formats want stream headers to be separate. */
 	if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 	{
 		pCodecCtx_v->flags |= CODEC_FLAG_GLOBAL_HEADER;
 	}
+	pCodecCtx_v->qmin = 10;
+	pCodecCtx_v->qmax = 51;
+	pCodecCtx_v->max_b_frames = 0;
 
 	/* Open video encoder */
 	AVDictionary *CodecCtx_v_param = 0;
@@ -295,8 +297,10 @@ int main()
 		av_log(ofmt_ctx, AV_LOG_ERROR, "Create video stream failed\n");
 		goto app_end;
 	}
-	video_stream->time_base.num = pCodecCtx_v->time_base.num;
-	video_stream->time_base.den = pCodecCtx_v->time_base.den;
+	//video_stream->time_base.num = pCodecCtx_v->time_base.num;
+	//video_stream->time_base.den = pCodecCtx_v->time_base.den;
+	video_stream->time_base.num = 1;
+	video_stream->time_base.den = 25;
 	video_stream->codec = pCodecCtx_v;
 
 
@@ -340,7 +344,7 @@ int main()
 	audio_stream->codec = pCodecCtx_a;
 
 	/* 11. Open avio url */
-	ret = avio_open(&ofmt_ctx->pb, output_path, 1);
+	ret = avio_open(&ofmt_ctx->pb, output_path, AVIO_FLAG_READ_WRITE);
 	if (ret < 0)
 	{
 		av_log(ofmt_ctx, AV_LOG_ERROR, "Avio open failed!\n");
@@ -358,9 +362,13 @@ int main()
 	dec_pkt_v = (AVPacket *)av_malloc(sizeof(AVPacket));
 
 	/* 15.Convertion of video from input (RGB , jpg, and so on) to YUV420P */
-	img_convert_ctx = sws_getContext(ifmt_ctx_v->streams[video_stream_index]->codec->width, ifmt_ctx_v->streams[video_stream_index]->codec->height, ifmt_ctx_v->streams[video_stream_index]->codec->pix_fmt,
-		pCodecCtx_v->width, pCodecCtx_v->height, AV_PIX_FMT_YUV420P, SWS_BICUBIC,
-		NULL, NULL, NULL);
+	img_convert_ctx = sws_getContext(ifmt_ctx_v->streams[video_stream_index]->codec->width,
+		ifmt_ctx_v->streams[video_stream_index]->codec->height,
+		ifmt_ctx_v->streams[video_stream_index]->codec->pix_fmt,
+		pCodecCtx_v->width,
+		pCodecCtx_v->height,
+		AV_PIX_FMT_YUV420P,
+		SWS_BICUBIC, NULL, NULL, NULL);
 
 	/* 16. Resample of audio form input to output */
 	aud_convert_ctx = swr_alloc_set_opts(NULL,
@@ -371,6 +379,8 @@ int main()
 		ifmt_ctx_a->streams[audio_stream_index]->codec->sample_fmt,
 		ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate,
 		0, NULL);
+
+	swr_init(aud_convert_ctx);
 
 	/* 17. Prepare buffers */
 	/* Prepare buffer to store yuv data to be encoded */
@@ -404,13 +414,12 @@ int main()
 	int64_t start_time = av_gettime();
 	AVRational time_base_q = { 1, AV_TIME_BASE };
 
-	av_log(NULL, AV_LOG_DEBUG, "To encoding .. \n");
+	//av_log(NULL, AV_LOG_DEBUG, "To encoding .. \n");
 	//system("pause");
 	while (encode_video || encode_audio)
 	{
-		//if (encode_video && (!encode_audio || av_compare_ts(vid_next_pts, time_base_q, aud_next_pts, time_base_q) <= 0))
-                if (encode_video)          
-                {
+		if (encode_video && (!encode_audio || av_compare_ts(vid_next_pts, time_base_q, aud_next_pts, time_base_q) <= 0))
+		{
 			if (1 == exit_thread)
 			{
 				break;
@@ -429,7 +438,7 @@ int main()
 					av_log(ofmt_ctx, AV_LOG_ERROR, "Could not malloc frame\n");
 					goto app_end;
 				}
-                
+
 				ret = avcodec_decode_video2(ifmt_ctx_v->streams[dec_pkt_v->stream_index]->codec,
 					pFrame,
 					&dec_got_frame,
@@ -438,7 +447,7 @@ int main()
 				{
 					av_free(pFrame);
 					av_log(NULL, AV_LOG_ERROR, "Video decoding failed [%d]!\n", ret);
-                                    goto app_end;
+					goto app_end;
 				}
 
 				/* Scale decoded image */
@@ -448,14 +457,12 @@ int main()
 						(const uint8_t* const*)pFrame->data,
 						pFrame->linesize,
 						0,
-						pFrame->height,
+						pCodecCtx_v->height,
 						pFrameYUV->data,
 						pFrameYUV->linesize);
 					pFrameYUV->width = pFrame->width;
 					pFrameYUV->height = pFrame->height;
 					pFrameYUV->format = AV_PIX_FMT_YUV420P;
-
-
 
 					/* Re-encode image */
 					enc_pkt_v.data = NULL;
@@ -469,20 +476,20 @@ int main()
 					{
 						av_log(NULL, AV_LOG_DEBUG, "Vedio encoder failed [%d]\n", ret);
 					}
-
+					av_frame_free(&pFrame);
 
 					/* Mux video */
 					if (1 == enc_got_frame)
 					{
-                                            av_log(NULL, AV_LOG_DEBUG, "Encode video start!\n");
-                    
+						av_log(NULL, AV_LOG_DEBUG, "Encode video start!\n");
+
 						frame_cnt_v++;
 						enc_pkt_v.stream_index = video_stream->index;
 
 						/* Write pts */
-                                           av_log(NULL, AV_LOG_DEBUG, "Writ to pts!\n");
+						av_log(NULL, AV_LOG_DEBUG, "Writ to pts!\n");
 						AVRational time_base_o = ofmt_ctx->streams[0]->time_base; // {1, 1000}
-						AVRational framerate_v = ofmt_ctx->streams[video_stream_index]->time_base; // {50, 2}
+						AVRational framerate_v = ifmt_ctx_v->streams[video_stream_index]->r_frame_rate; // {50, 2}
 						int64_t calc_duration = (double)(AV_TIME_BASE) * (1 / av_q2d(framerate_v));
 
 						enc_pkt_v.pts = av_rescale_q(frame_cnt_v * calc_duration, time_base_q, time_base_o);
@@ -491,38 +498,38 @@ int main()
 						enc_pkt_v.pos = -1;
 
 						/* Delay */
-                                           av_log(NULL, AV_LOG_DEBUG, "Delay!\n"); 
+						av_log(NULL, AV_LOG_DEBUG, "Delay!\n");
 						vid_next_pts = frame_cnt_v*calc_duration; //general timebase
 						int64_t pts_time = av_rescale_q(enc_pkt_v.dts, time_base_o, time_base_q);
 						int64_t now_time = av_gettime() - start_time;
 						if ((pts_time > now_time)
 							&& (vid_next_pts + pts_time - now_time)  < aud_next_pts)
 						{
-						       av_log(NULL, AV_LOG_DEBUG, "ulseep %d!\n", pts_time - now_time);
+							av_log(NULL, AV_LOG_DEBUG, "ulseep %d!\n", pts_time - now_time);
 							av_usleep(pts_time - now_time);
 						}
 
-                                            av_log(NULL, AV_LOG_DEBUG, "To write !\n"); 
+						av_log(NULL, AV_LOG_DEBUG, "To write !\n");
 						ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt_v);
-                                            if( 0 != ret)
-                                            {
-                                                av_log(ofmt_ctx, AV_LOG_ERROR, "Write frame failed %d !\n", ret); 
-                                            }
-                                             av_log(NULL, AV_LOG_DEBUG, "Write finished !\n"); 
-						av_free(&enc_pkt_v);
-                                            av_log(NULL, AV_LOG_DEBUG, "Encode video finished!\n");
+						//ret = av_write_frame(ofmt_ctx, &enc_pkt_v);
+						if (0 != ret)
+						{
+							av_log(ofmt_ctx, AV_LOG_ERROR, "Write frame failed %d !\n", ret);
+						}
+						av_log(NULL, AV_LOG_DEBUG, "Write finished !\n");
+						av_free_packet(&enc_pkt_v);
+						av_log(NULL, AV_LOG_DEBUG, "Encode video finished!\n");
 					}
-                                    else
-                                    {
-                                        av_log(NULL, AV_LOG_DEBUG, "Can't encode video !\n");
-                                    }
+					else
+					{
+						av_log(NULL, AV_LOG_DEBUG, "Can't encode video !\n");
+					}
 				}
-                            else
-                            {
-                                av_log(NULL, AV_LOG_DEBUG, "Can't decode video successfully!\n");    
-                            }
-
-				av_frame_free(&pFrame);
+				else
+				{
+					av_frame_free(&pFrame);
+					av_log(NULL, AV_LOG_DEBUG, "Can't decode video successfully!\n");
+				}
 				av_free_packet(dec_pkt_v);
 			}
 			else
@@ -530,7 +537,7 @@ int main()
 				/* Can't read input video packet */
 				if (AVERROR_EOF == ret)
 				{
-				        av_log(NULL, AV_LOG_ERROR, "Read eof!\n");
+					av_log(NULL, AV_LOG_ERROR, "Read eof!\n");
 					encode_video = 0;
 				}
 				else
@@ -782,3 +789,4 @@ app_end:
 
 	return LC_SUCCESS;
 }
+
