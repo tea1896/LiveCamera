@@ -1,4 +1,4 @@
-// live_camera.cpp : 定义控制台应用程序的入口点。
+锘?/ live_camera.cpp : 瀹氫箟鎺у埗鍙板簲鐢ㄧ▼搴忕殑鍏ュ彛鐐广€?
 // Author: tea1896@gmail.com
 
 #include "stdafx.h"
@@ -141,7 +141,7 @@ int main()
 	avdevice_register_all();
 	avformat_network_init();
 
-	av_log_set_level(AV_LOG_DEBUG);
+	av_log_set_level(AV_LOG_INFO);
 
 
 	/* 1. List all video and audio devices */
@@ -166,7 +166,7 @@ int main()
 
 	//if not setting rtbufsize, error messages will be shown in cmd, but you can still watch or record the stream correctly in most time
 	//setting rtbufsize will erase those error messages, however, larger rtbufsize will bring latency
-	av_dict_set(&device_param, "rtbufsize", "100M", 0);
+	av_dict_set(&device_param, "rtbufsize", "10M", 0);
 
 	ret = avformat_open_input(&ifmt_ctx_v, VideoDeviceName, ifmt, &device_param);
 	if (0 != ret)
@@ -268,9 +268,9 @@ int main()
 	pCodecCtx_v->width = ifmt_ctx_v->streams[video_stream_index]->codec->width;
 	pCodecCtx_v->height = ifmt_ctx_v->streams[video_stream_index]->codec->height;
 	pCodecCtx_v->time_base.num = 1;
-	pCodecCtx_v->time_base.den = 25;
-	pCodecCtx_v->bit_rate = 300000;
-	pCodecCtx_v->gop_size = 250;
+	pCodecCtx_v->time_base.den = 30;
+	pCodecCtx_v->bit_rate = 1000000;
+	pCodecCtx_v->gop_size = 25;
 	/* Some formats want stream headers to be separate. */
 	if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 	{
@@ -481,13 +481,12 @@ int main()
 					/* Mux video */
 					if (1 == enc_got_frame)
 					{
-						av_log(NULL, AV_LOG_DEBUG, "Encode video start!\n");
+						//av_log(NULL, AV_LOG_DEBUG, "Encode video start!\n");
 
 						frame_cnt_v++;
 						enc_pkt_v.stream_index = video_stream->index;
 
 						/* Write pts */
-						av_log(NULL, AV_LOG_DEBUG, "Writ to pts!\n");
 						AVRational time_base_o = ofmt_ctx->streams[0]->time_base; // {1, 1000}
 						AVRational framerate_v = ifmt_ctx_v->streams[video_stream_index]->r_frame_rate; // {50, 2}
 						int64_t calc_duration = (double)(AV_TIME_BASE) * (1 / av_q2d(framerate_v));
@@ -498,7 +497,6 @@ int main()
 						enc_pkt_v.pos = -1;
 
 						/* Delay */
-						av_log(NULL, AV_LOG_DEBUG, "Delay!\n");
 						vid_next_pts = frame_cnt_v*calc_duration; //general timebase
 						int64_t pts_time = av_rescale_q(enc_pkt_v.dts, time_base_o, time_base_q);
 						int64_t now_time = av_gettime() - start_time;
@@ -508,17 +506,15 @@ int main()
 							av_log(NULL, AV_LOG_DEBUG, "ulseep %d!\n", pts_time - now_time);
 							av_usleep(pts_time - now_time);
 						}
+                                            av_log(ofmt_ctx, AV_LOG_INFO, "Write video pts %lld !\n", enc_pkt_v.pts);
 
-						av_log(NULL, AV_LOG_DEBUG, "To write !\n");
 						ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt_v);
 						//ret = av_write_frame(ofmt_ctx, &enc_pkt_v);
 						if (0 != ret)
 						{
 							av_log(ofmt_ctx, AV_LOG_ERROR, "Write frame failed %d !\n", ret);
 						}
-						av_log(NULL, AV_LOG_DEBUG, "Write finished !\n");
 						av_free_packet(&enc_pkt_v);
-						av_log(NULL, AV_LOG_DEBUG, "Encode video finished!\n");
 					}
 					else
 					{
@@ -549,6 +545,8 @@ int main()
 		}
 		else
 		{
+                    av_log(ofmt_ctx, AV_LOG_DEBUG, "Recoding a audio frame!\n");
+        
 			// audio transcoding 
 			const int output_frame_size = pCodecCtx_a->frame_size;
 
@@ -592,10 +590,11 @@ int main()
 					if (ret == AVERROR_EOF)
 					{
 						encode_audio = 0;
+                                            goto app_end;
 					}
 					else
 					{
-						printf("Could not read audio frame\n");
+						av_log(NULL, AV_LOG_DEBUG, "Could not read audio frame\n");
 						return ret;
 					}
 				}
@@ -606,10 +605,11 @@ int main()
 				* If we are at the end of the file, pass an empty packet to the decoder
 				* to flush it.
 				*/
-				if ((ret = avcodec_decode_audio4(ifmt_ctx_a->streams[audio_stream_index]->codec, input_frame,
-					&dec_got_frame_a, &input_packet)) < 0)
+				if ((ret = avcodec_decode_audio4(ifmt_ctx_a->streams[audio_stream_index]->codec, 
+                                                                                  input_frame,
+					                                              &dec_got_frame_a, &input_packet)) < 0)
 				{
-					printf("Could not decode audio frame\n");
+					av_log(NULL, AV_LOG_DEBUG, "Could not decode audio frame\n");
 					return ret;
 				}
 				av_packet_unref(&input_packet);
@@ -621,11 +621,11 @@ int main()
 					* block for convenience.
 					*/
 					if ((ret = av_samples_alloc(converted_input_samples, NULL,
-						pCodecCtx_a->channels,
-						input_frame->nb_samples,
-						pCodecCtx_a->sample_fmt, 0)) < 0)
+						                                 pCodecCtx_a->channels,
+						                                 input_frame->nb_samples,
+						                                 pCodecCtx_a->sample_fmt, 0)) < 0)
 					{
-						printf("Could not allocate converted input samples\n");
+						av_log(NULL, AV_LOG_DEBUG, "Could not allocate converted input samples\n");
 						av_freep(&(*converted_input_samples)[0]);
 						free(*converted_input_samples);
 						return ret;
@@ -640,7 +640,7 @@ int main()
 						converted_input_samples, input_frame->nb_samples,
 						(const uint8_t**)input_frame->extended_data, input_frame->nb_samples)) < 0)
 					{
-						printf("Could not convert input samples\n");
+						av_log(NULL, AV_LOG_DEBUG, "Could not convert input samples\n");
 						return ret;
 					}
 
@@ -651,7 +651,7 @@ int main()
 					*/
 					if ((ret = av_audio_fifo_realloc(audio_fifo, av_audio_fifo_size(audio_fifo) + input_frame->nb_samples)) < 0)
 					{
-						printf("Could not reallocate FIFO\n");
+						av_log(NULL, AV_LOG_DEBUG, "Could not reallocate FIFO\n");
 						return ret;
 					}
 
@@ -659,7 +659,7 @@ int main()
 					if (av_audio_fifo_write(audio_fifo, (void **)converted_input_samples,
 						input_frame->nb_samples) < input_frame->nb_samples)
 					{
-						printf("Could not write data to FIFO\n");
+						av_log(NULL, AV_LOG_DEBUG, "Could not write data to FIFO\n");
 						return AVERROR_EXIT;
 					}
 				}
@@ -708,8 +708,9 @@ int main()
 				* Allocate the samples of the created frame. This call will make
 				* sure that the audio frame can hold as many samples as specified.
 				*/
-				if ((ret = av_frame_get_buffer(output_frame, 0)) < 0) {
-					printf("Could not allocate output frame samples\n");
+				if ((ret = av_frame_get_buffer(output_frame, 0)) < 0) 
+                            {
+					av_log(NULL, AV_LOG_DEBUG, "Could not allocate output frame samples\n");
 					av_frame_free(&output_frame);
 					return ret;
 				}
@@ -718,8 +719,9 @@ int main()
 				* Read as many samples from the FIFO buffer as required to fill the frame.
 				* The samples are stored in the frame temporarily.
 				*/
-				if (av_audio_fifo_read(audio_fifo, (void **)output_frame->data, frame_size) < frame_size) {
-					printf("Could not read data from FIFO\n");
+				if (av_audio_fifo_read(audio_fifo, (void **)output_frame->data, frame_size) < frame_size)
+                            {
+					av_log(NULL, AV_LOG_DEBUG, "Could not read data from FIFO\n");
 					return AVERROR_EXIT;
 				}
 
@@ -743,7 +745,7 @@ int main()
 				if ((ret = avcodec_encode_audio2(pCodecCtx_a, &output_packet,
 					output_frame, &enc_got_frame_a)) < 0)
 				{
-					printf("Could not encode frame\n");
+					av_log(NULL, AV_LOG_DEBUG, "Could not encode frame\n");
 					av_packet_unref(&output_packet);
 					return ret;
 				}
@@ -756,7 +758,7 @@ int main()
 
 					AVRational time_base = ofmt_ctx->streams[1]->time_base;
 					AVRational r_framerate1 = { ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 1 };// { 44100, 1};  
-					int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  //内部时间戳  
+					int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  //鍐呴儴鏃堕棿鎴? 
 
 					output_packet.pts = av_rescale_q(nb_samples*calc_duration, time_base_q, time_base);
 					output_packet.dts = output_packet.pts;
@@ -770,9 +772,10 @@ int main()
 					if ((pts_time > now_time) && ((aud_next_pts + pts_time - now_time)<vid_next_pts))
 						av_usleep(pts_time - now_time);
 
+                                    av_log(ofmt_ctx, AV_LOG_INFO, "Write audio pts %lld !\n", (uint64_t)output_packet.pts);
 					if ((ret = av_interleaved_write_frame(ofmt_ctx, &output_packet)) < 0)
 					{
-						printf("Could not write frame\n");
+						av_log(ofmt_ctx, AV_LOG_ERROR, "Could not write frame\n");
 						av_packet_unref(&output_packet);
 						return ret;
 					}
@@ -789,4 +792,3 @@ app_end:
 
 	return LC_SUCCESS;
 }
-
