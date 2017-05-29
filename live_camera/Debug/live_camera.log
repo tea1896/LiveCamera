@@ -2,69 +2,93 @@
   live_camera.cpp
 e:\workspace\git\livecamera\live_camera\live_camera.cpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
 e:\workspace\git\livecamera\live_camera\include\libavutil\rational.h : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(186): warning C4018: “<”: 有符号/无符号不匹配
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(188): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(93): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(200): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(103): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(220): warning C4018: “<”: 有符号/无符号不匹配
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(222): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(117): warning C4244: “初始化”: 从“double”转换到“int64_t”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(103): warning C4996: 'avcodec_encode_video2': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(5323): note: 参见“avcodec_encode_video2”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(137): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(234): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(147): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(257): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(158): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(258): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(161): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(164): warning C4244: “初始化”: 从“double”转换到“int64_t”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(168): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(147): warning C4996: 'avcodec_encode_audio2': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(5284): note: 参见“avcodec_encode_audio2”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(284): warning C4018: “<”: 有符号/无符号不匹配
 e:\workspace\git\livecamera\live_camera\live_camera.cpp(286): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
 e:\workspace\git\livecamera\live_camera\live_camera.cpp(299): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(326): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(325): warning C4018: “<”: 有符号/无符号不匹配
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(327): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(347): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(340): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(348): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(363): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(356): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(364): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(357): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(399): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(358): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(412): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(418): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(439): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(423): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(460): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(429): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(461): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(478): warning C4244: “初始化”: 从“double”转换到“int64_t”，可能丢失数据
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(486): warning C4244: “=”: 从“int64_t”转换到“int”，可能丢失数据
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(492): warning C4244: “参数”: 从“int64_t”转换到“unsigned int”，可能丢失数据
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(576): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(462): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(725): warning C4996: 'AVStream::codec': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(473): warning C4996: 'AVStream::codec': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(726): warning C4244: “初始化”: 从“double”转换到“int64_t”，可能丢失数据
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(733): warning C4244: “=”: 从“int64_t”转换到“int”，可能丢失数据
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(738): warning C4244: “参数”: 从“int64_t”转换到“unsigned int”，可能丢失数据
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(364): warning C4996: 'avpicture_get_size': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(474): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(475): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(537): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(587): warning C4244: “初始化”: 从“double”转换到“int64_t”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(595): warning C4244: “=”: 从“int64_t”转换到“int”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(602): warning C4244: “参数”: 从“int64_t”转换到“unsigned int”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(704): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(855): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(856): warning C4244: “初始化”: 从“double”转换到“int64_t”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(863): warning C4244: “=”: 从“int64_t”转换到“int”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(869): warning C4244: “参数”: 从“int64_t”转换到“unsigned int”，可能丢失数据
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(905): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(910): warning C4996: 'AVStream::codec': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavformat\avformat.h(893): note: 参见“AVStream::codec”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(483): warning C4996: 'avpicture_get_size': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(5468): note: 参见“avpicture_get_size”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(367): warning C4996: 'avpicture_fill': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(486): warning C4996: 'avpicture_fill': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(5453): note: 参见“avpicture_fill”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(429): warning C4996: 'avcodec_decode_video2': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(537): warning C4996: 'avcodec_decode_video2': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(4812): note: 参见“avcodec_decode_video2”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(459): warning C4996: 'avcodec_encode_video2': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(566): warning C4996: 'avcodec_encode_video2': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(5323): note: 参见“avcodec_encode_video2”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(501): warning C4996: 'av_free_packet': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(612): warning C4996: 'av_free_packet': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(4473): note: 参见“av_free_packet”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(576): warning C4996: 'avcodec_decode_audio4': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(624): warning C4996: 'av_free_packet': 被声明为已否决
+  e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(4473): note: 参见“av_free_packet”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(704): warning C4996: 'avcodec_decode_audio4': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(4763): note: 参见“avcodec_decode_audio4”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(710): warning C4996: 'avcodec_encode_audio2': 被声明为已否决
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(840): warning C4996: 'avcodec_encode_audio2': 被声明为已否决
   e:\workspace\git\livecamera\live_camera\include\libavcodec\avcodec.h(5284): note: 参见“avcodec_encode_audio2”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(754): warning C4533: “goto time_base_q”跳过了“app_end”的初始化操作
-  e:\workspace\git\livecamera\live_camera\live_camera.cpp(391): note: 参见“time_base_q”的声明
-  e:\workspace\git\livecamera\live_camera\live_camera.cpp(754): note: 参见“app_end”的声明
-e:\workspace\git\livecamera\live_camera\live_camera.cpp(121): warning C4101: “enc_pkt_a”: 未引用的局部变量
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(901): warning C4533: “goto time_base_q”跳过了“app_end”的初始化操作
+  e:\workspace\git\livecamera\live_camera\live_camera.cpp(510): note: 参见“time_base_q”的声明
+  e:\workspace\git\livecamera\live_camera\live_camera.cpp(901): note: 参见“app_end”的声明
+e:\workspace\git\livecamera\live_camera\live_camera.cpp(218): warning C4101: “enc_pkt_a”: 未引用的局部变量
   live_camera.vcxproj -> E:\workspace\git\LiveCamera\Debug\live_camera.exe
   live_camera.vcxproj -> E:\workspace\git\LiveCamera\Debug\live_camera.pdb (Full PDB)

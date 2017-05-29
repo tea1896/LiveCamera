@@ -1,5 +1,4 @@
-锘?/ live_camera.cpp : 瀹氫箟鎺у埗鍙板簲鐢ㄧ▼搴忕殑鍏ュ彛鐐广€?
-// Author: tea1896@gmail.com
+/* Copy from https://github.com/tea1896/ffmpeg_camera_streamer */
 
 #include "stdafx.h"
 
@@ -86,6 +85,102 @@ void showAllVideoDeivces()
 	av_log_set_callback(av_log_default_callback);
 }
 
+int flush_video_encoder(AVFormatContext *ifmt_ctx, AVFormatContext *ofmt_ctx, unsigned int stream_index, int framecnt)
+{
+    int ret;
+    int got_frame;
+    AVPacket enc_pkt;
+    if (!(ofmt_ctx->streams[stream_index]->codec->codec->capabilities & CODEC_CAP_DELAY))
+    {
+        return 0;
+    }
+    
+    while (1) 
+    {
+        enc_pkt.data = NULL;
+        enc_pkt.size = 0;
+        av_init_packet(&enc_pkt);
+        ret = avcodec_encode_video2(ofmt_ctx->streams[stream_index]->codec, &enc_pkt, NULL, &got_frame);
+        av_frame_free(NULL);
+        if (ret < 0)
+            break;
+        if (!got_frame)
+        {
+            ret = 0;
+            break;
+        }
+        av_log(NULL , AV_LOG_ERROR, "Flush Encoder: Succeed to encode 1 frame!\tsize:%5d\n", enc_pkt.size);
+		framecnt++;
+        AVRational time_base = ofmt_ctx->streams[stream_index]->time_base;//{ 1, 1000 };
+        AVRational r_framerate1 = ifmt_ctx->streams[0]->r_frame_rate;// { 50, 2 };
+        AVRational time_base_q = { 1, AV_TIME_BASE };
+        int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));	//内部时间戳
+        enc_pkt.pts = av_rescale_q(framecnt*calc_duration, time_base_q, time_base);
+        enc_pkt.dts = enc_pkt.pts;
+        enc_pkt.duration = av_rescale_q(calc_duration, time_base_q, time_base);
+
+        /* copy packet*/
+        enc_pkt.pos = -1;
+        
+        /* mux encoded frame */
+        ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt);
+        if (ret < 0)
+            break;
+    }
+    return ret;
+}
+
+int flush_audio_encoder(AVFormatContext *ifmt_ctx_a, AVFormatContext *ofmt_ctx, unsigned int stream_index, int nb_samples){
+	int ret;
+	int got_frame;
+	AVPacket enc_pkt;
+	if (!(ofmt_ctx->streams[stream_index]->codec->codec->capabilities & CODEC_CAP_DELAY))
+    {   
+		return 0;
+    }
+    
+	while (1) 
+    {
+		enc_pkt.data = NULL;
+		enc_pkt.size = 0;
+		av_init_packet(&enc_pkt);
+		ret = avcodec_encode_audio2(ofmt_ctx->streams[stream_index]->codec, &enc_pkt,
+			NULL, &got_frame);
+		av_frame_free(NULL);
+		if (ret < 0)
+			break;
+		if (!got_frame)
+        {
+			ret = 0;
+			break;
+		}
+		av_log(NULL , AV_LOG_ERROR, "Flush Encoder: Succeed to encode 1 frame!\tsize:%5d\n", enc_pkt.size);
+		nb_samples+=ofmt_ctx->streams[stream_index]->codec->frame_size;
+		//Write PTS
+		AVRational time_base = ofmt_ctx->streams[stream_index]->time_base;//{ 1, 1000 };
+		AVRational r_framerate1 = { ifmt_ctx_a->streams[0]->codec->sample_rate, 1 };
+		AVRational time_base_q = { 1, AV_TIME_BASE };
+		//Duration between 2 frames (us)
+		int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));	//内部时间戳
+		//Parameters
+		enc_pkt.pts = av_rescale_q(nb_samples*calc_duration, time_base_q, time_base);
+		enc_pkt.dts = enc_pkt.pts;
+		enc_pkt.duration = ofmt_ctx->streams[stream_index]->codec->frame_size;
+
+		/* copy packet*/
+		//转换PTS/DTS（Convert PTS/DTS）
+		enc_pkt.pos = -1;
+		
+		//ofmt_ctx->duration = enc_pkt.duration * nb_samples;
+
+		/* mux encoded frame */
+		ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt);
+		if (ret < 0)
+			break;
+	}
+	return ret;
+}
+
 
 
 int main()
@@ -162,7 +257,7 @@ int main()
 	ifmt = av_find_input_format("dshow");
 
 	snprintf(VideoDeviceName, sizeof(VideoDeviceName), "video=%s", g_Device_array[VideoDeviceIndex].c_str());
-	printf("video is %s\n", VideoDeviceName);
+	av_log(NULL, AV_LOG_INFO, "Selected video capture device is %s\n", VideoDeviceName);
 
 	//if not setting rtbufsize, error messages will be shown in cmd, but you can still watch or record the stream correctly in most time
 	//setting rtbufsize will erase those error messages, however, larger rtbufsize will bring latency
@@ -209,7 +304,7 @@ int main()
 
 	/* 5. Open audio capture device */
 	snprintf(AudioDeviceName, sizeof(AudioDeviceName), "audio=%s", g_Device_array[AudioDeviceIndex].c_str());
-	av_log(NULL, AV_LOG_DEBUG, "audio is %s\n", AudioDeviceName);
+	av_log(NULL, AV_LOG_DEBUG, "Selected audio capture device is %s\n", AudioDeviceName);
 	ret = avformat_open_input(&ifmt_ctx_a, AudioDeviceName, ifmt, &device_param);
 	if (ret < 0)
 	{
@@ -506,7 +601,7 @@ int main()
 							av_log(NULL, AV_LOG_DEBUG, "ulseep %d!\n", pts_time - now_time);
 							av_usleep(pts_time - now_time);
 						}
-                                            av_log(ofmt_ctx, AV_LOG_INFO, "Write video pts %lld !\n", enc_pkt_v.pts);
+                        //av_log(ofmt_ctx, AV_LOG_INFO, "Write video pts %lld !\n", enc_pkt_v.pts);
 
 						ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt_v);
 						//ret = av_write_frame(ofmt_ctx, &enc_pkt_v);
@@ -539,13 +634,14 @@ int main()
 				else
 				{
 					av_log(NULL, AV_LOG_ERROR, "Can't read input video frame!\n");
-					return 0;
+                    goto app_end;
+                    //return 0;
 				}
 			}
 		}
 		else
 		{
-                    av_log(ofmt_ctx, AV_LOG_DEBUG, "Recoding a audio frame!\n");
+            av_log(ofmt_ctx, AV_LOG_DEBUG, "Recoding a audio frame!\n");
         
 			// audio transcoding 
 			const int output_frame_size = pCodecCtx_a->frame_size;
@@ -688,8 +784,7 @@ int main()
 				* If there is less than the maximum possible frame size in the FIFO
 				* buffer use this number. Otherwise, use the maximum possible frame size
 				*/
-				const int frame_size = FFMIN(av_audio_fifo_size(audio_fifo),
-					pCodecCtx_a->frame_size);
+				const int frame_size = FFMIN(av_audio_fifo_size(audio_fifo), pCodecCtx_a->frame_size);
 
 				/** Initialize temporary storage for one output frame. */
 				/**
@@ -709,7 +804,7 @@ int main()
 				* sure that the audio frame can hold as many samples as specified.
 				*/
 				if ((ret = av_frame_get_buffer(output_frame, 0)) < 0) 
-                            {
+                {
 					av_log(NULL, AV_LOG_DEBUG, "Could not allocate output frame samples\n");
 					av_frame_free(&output_frame);
 					return ret;
@@ -758,7 +853,7 @@ int main()
 
 					AVRational time_base = ofmt_ctx->streams[1]->time_base;
 					AVRational r_framerate1 = { ifmt_ctx_a->streams[audio_stream_index]->codec->sample_rate, 1 };// { 44100, 1};  
-					int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  //鍐呴儴鏃堕棿鎴? 
+					int64_t calc_duration = (double)(AV_TIME_BASE)*(1 / av_q2d(r_framerate1));  
 
 					output_packet.pts = av_rescale_q(nb_samples*calc_duration, time_base_q, time_base);
 					output_packet.dts = output_packet.pts;
@@ -770,9 +865,11 @@ int main()
 					int64_t pts_time = av_rescale_q(output_packet.pts, time_base, time_base_q);
 					int64_t now_time = av_gettime() - start_time;
 					if ((pts_time > now_time) && ((aud_next_pts + pts_time - now_time)<vid_next_pts))
+                    {               
 						av_usleep(pts_time - now_time);
+                    }
 
-                                    av_log(ofmt_ctx, AV_LOG_INFO, "Write audio pts %lld !\n", (uint64_t)output_packet.pts);
+                    //av_log(ofmt_ctx, AV_LOG_INFO, "Write audio pts %lld !\n", (uint64_t)output_packet.pts);
 					if ((ret = av_interleaved_write_frame(ofmt_ctx, &output_packet)) < 0)
 					{
 						av_log(ofmt_ctx, AV_LOG_ERROR, "Could not write frame\n");
@@ -787,8 +884,58 @@ int main()
 		}
 	}
 
+
+    // Flush encoder
+    ret = flush_video_encoder(ifmt_ctx_v, ofmt_ctx, 0, frame_cnt_v);
+    if( ret < 0 )
+    {
+        av_log(ofmt_ctx, AV_LOG_ERROR, "Flushing video encoder failed!\n");     
+    }
+
+    ret = flush_audio_encoder(ifmt_ctx_a, ofmt_ctx, 0, nb_samples);
+    if( ret < 0 )
+    {
+        av_log(ofmt_ctx, AV_LOG_ERROR, "Flushing audio encoder failed!\n");     
+    }
+
 app_end:
+    // Close decoder
+    if(video_stream)
+    {
+        avcodec_close(video_stream->codec);
+    }
+
+    if(audio_stream)
+    {
+        avcodec_close(audio_stream->codec);
+    }
+
+    // Close video decoder buffer
+    av_free(output_buffer);
+
+    if (converted_input_samples) 
+    {
+		av_freep(&converted_input_samples[0]);
+	}
+
+    // Close audio decode buffer
+    if(audio_fifo)
+    {
+        av_audio_fifo_free(audio_fifo);
+    }
+
+    // Close output muxer I/O
+    avio_close(ofmt_ctx->pb);
+
+    // Close input muxer
+    avformat_free_context(ifmt_ctx_v);
+    avformat_free_context(ifmt_ctx_a);
+    avformat_free_context(ofmt_ctx);
+
+    
 	system("pause");
 
 	return LC_SUCCESS;
 }
+
+
